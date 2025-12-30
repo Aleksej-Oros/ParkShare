@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /parkingSpots/{spotId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        // Allow other users to update only 'status' and 'expiresAt'
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'expiresAt'])
+      );
+
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    match /parkHistory/{historyId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if false; // Park history is immutable
+    }
+
+    match /subscriptions/{subId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow write: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+  }
+}
+
+
+
+
