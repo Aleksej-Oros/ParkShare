@@ -54,7 +54,7 @@ export default function VehicleScreen() {
       return;
     }
 
-    // Pass all data to confirm screen
+    // Pass all data to confirm onboarding screen in stack
     router.push({
       pathname: '/onboarding/confirm',
       params: {

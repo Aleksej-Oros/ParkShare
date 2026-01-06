@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function WelcomeScreen() {
   const handleGetStarted = () => {
+    // Pass to next onboarding step in parent Stack; do not manually navigate outside onboarding
     router.push('/onboarding/username');
   };
 

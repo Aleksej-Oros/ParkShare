@@ -16,11 +16,6 @@ export {
   ErrorBoundary,
 } from 'expo-router';
 
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  // Set initial route to auth/login as safe default - AuthGuard will redirect authenticated users to tabs
-  initialRouteName: 'auth/login',
-};
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -62,41 +57,20 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="auth/login"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="auth/register"
-          options={{
-            title: 'Sign Up',
-            headerShown: true,
-            // headerLeft disabled
-            // Remove headerRight inline UI handler to prevent TouchableOpacity-in-header crash
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
 
-          }}
-        />
-        
         <Stack.Screen
           name="map/add"
-          options={{
-            title: 'Add Parking Spot',
-            headerShown: true,
-            presentation: 'modal',
-          }}
+          options={{ presentation: 'modal' }}
         />
         <Stack.Screen
           name="map/edit"
-          options={{
-            title: 'Edit Parking Spot',
-            headerShown: true,
-            presentation: 'modal',
-          }}
+          options={{ presentation: 'modal' }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+    </Stack>
+
     </ThemeProvider>
   );
 }

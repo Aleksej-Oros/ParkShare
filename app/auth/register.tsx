@@ -1,7 +1,8 @@
 /**
  * Register Screen
  * Uses react-hook-form with Zod validation
- * No isValid references - uses formState.errors only
+ * Firebase Auth ONLY
+ * User profile is created later during onboarding
  */
 import React, { useState } from 'react';
 import {
@@ -17,7 +18,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { router, Link } from 'expo-router';
+import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -26,7 +27,9 @@ import { Text } from '@/components/Themed';
 import { register, clearError } from '@/features/auth/authSlice';
 import { AppDispatch, RootState } from '@/store';
 
-// Zod schema for registration validation
+// ------------------
+// Validation schema
+// ------------------
 const RegisterSchema = z
   .object({
     email: z
@@ -60,7 +63,7 @@ export default function RegisterScreen() {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(RegisterSchema),
-    mode: 'onChange', // mandatory - validates on change
+    mode: 'onChange',
     defaultValues: {
       email: '',
       password: '',
@@ -68,26 +71,46 @@ export default function RegisterScreen() {
     },
   });
 
+  // ------------------
+  // Submit handler
+  // ------------------
   const onSubmit = async (data: RegisterFormData) => {
     dispatch(clearError());
 
-    // Trim email
     const trimmedEmail = data.email.trim();
 
-    // Attempt registration
-    const result = await dispatch(register({ email: trimmedEmail, password: data.password }));
+    const result = await dispatch(
+      register({
+        email: trimmedEmail,
+        password: data.password,
+      })
+    );
 
     if (register.fulfilled.match(result)) {
-      // Success - AuthGuard will handle redirect
+      // ✅ SUCCESS
+      // Do NOTHING here.
+      // AuthGuard will:
+      // - detect authenticated user
+      // - see that profile does not exist
+      // - redirect to /onboarding
+      return;
+    }
+
+    // ❌ ERROR HANDLING
+    const errorMsg = result.payload as string;
+
+    if (errorMsg?.includes('email-already-in-use')) {
+      Alert.alert(
+        'Registration Failed',
+        'This email is already registered. Please sign in instead.'
+      );
+    } else if (errorMsg?.includes('weak-password')) {
+      Alert.alert(
+        'Registration Failed',
+        'Password is too weak. Please choose a stronger password.'
+      );
     } else {
-      const errorMsg = result.payload as string;
-      if (errorMsg.includes('email-already-in-use')) {
-        Alert.alert('Registration Failed', 'This email is already registered. Please sign in instead.');
-      } else if (errorMsg.includes('weak-password')) {
-        Alert.alert('Registration Failed', 'Password is too weak. Please choose a stronger password.');
-      } else {
-        Alert.alert('Registration Failed', errorMsg);
-      }
+      Alert.alert('Registration Failed', errorMsg || 'Unknown error occurred');
     }
   };
 
@@ -105,14 +128,17 @@ export default function RegisterScreen() {
           <Text style={styles.subtitle}>Join ParkShare today</Text>
 
           <View style={styles.form}>
-            {/* Email Input */}
+            {/* Email */}
             <View style={styles.inputContainer}>
               <Controller
                 control={control}
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    style={[styles.input, errors.email ? styles.inputError : null]}
+                    style={[
+                      styles.input,
+                      errors.email && styles.inputError,
+                    ]}
                     placeholder="Email"
                     placeholderTextColor="#999"
                     value={value}
@@ -130,7 +156,7 @@ export default function RegisterScreen() {
               )}
             </View>
 
-            {/* Password Input */}
+            {/* Password */}
             <View style={styles.inputContainer}>
               <View style={styles.passwordContainer}>
                 <Controller
@@ -141,7 +167,7 @@ export default function RegisterScreen() {
                       style={[
                         styles.input,
                         styles.passwordInput,
-                        errors.password ? styles.inputError : null,
+                        errors.password && styles.inputError,
                       ]}
                       placeholder="Password (min. 8 characters)"
                       placeholderTextColor="#999"
@@ -168,11 +194,13 @@ export default function RegisterScreen() {
                 </Pressable>
               </View>
               {errors.password && (
-                <Text style={styles.errorText}>{errors.password.message}</Text>
+                <Text style={styles.errorText}>
+                  {errors.password.message}
+                </Text>
               )}
             </View>
 
-            {/* Confirm Password Input */}
+            {/* Confirm Password */}
             <View style={styles.inputContainer}>
               <View style={styles.passwordContainer}>
                 <Controller
@@ -183,7 +211,7 @@ export default function RegisterScreen() {
                       style={[
                         styles.input,
                         styles.passwordInput,
-                        errors.confirmPassword ? styles.inputError : null,
+                        errors.confirmPassword && styles.inputError,
                       ]}
                       placeholder="Confirm Password"
                       placeholderTextColor="#999"
@@ -199,30 +227,37 @@ export default function RegisterScreen() {
                 />
                 <Pressable
                   style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  onPress={() =>
+                    setShowConfirmPassword(!showConfirmPassword)
+                  }
                   disabled={loading}
                 >
                   <Ionicons
-                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    name={
+                      showConfirmPassword
+                        ? 'eye-off-outline'
+                        : 'eye-outline'
+                    }
                     size={20}
                     color="#666"
                   />
                 </Pressable>
               </View>
               {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
+                <Text style={styles.errorText}>
+                  {errors.confirmPassword.message}
+                </Text>
               )}
             </View>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <TouchableOpacity
               style={[
                 styles.button,
-                (loading || !!errors.email || !!errors.password || !!errors.confirmPassword) &&
-                  styles.buttonDisabled,
+                loading && styles.buttonDisabled,
               ]}
               onPress={handleSubmit(onSubmit)}
-              disabled={loading || !!errors.email || !!errors.password || !!errors.confirmPassword}
+              disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -246,6 +281,9 @@ export default function RegisterScreen() {
   );
 }
 
+// ------------------
+// Styles
+// ------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,68 +1,70 @@
 /**
  * PinMarker Component
- * Custom marker for parking pins with color coding based on pinType and status
+ * Custom marker for parking pins with color coding based on pinType and Firestore status
  */
 import React from 'react';
-import { Marker, MarkerProps } from 'react-native-maps';
+import { Marker } from 'react-native-maps';
 import { MapPin } from './useMapPins';
+import { ParkingStatus } from '@/models/firestore';
 
-interface PinMarkerProps extends Omit<MarkerProps, 'coordinate'> {
+interface PinMarkerProps {
   pin: MapPin;
   onPress: () => void;
 }
 
 /**
- * Get marker color based on pinType and status
- * - Walk-In: Yellow (#FFD700)
- * - Leaving-Soon: Red (#FF4444)
- * - Verified: Green (#4CAF50) - verified pins use green
- * - Expired: Grey (#999999)
+ * Helper: check if pin status represents an expired pin
  */
-function getPinColor(pin: MapPin): string {
-  // Expired pins are grey
-  if (pin.status === 'expired') {
-    return '#999999'; // Grey
-  }
-
-  // Verified pins are green
-  if (pin.status === 'verified') {
-    return '#4CAF50'; // Green
-  }
-
-  // Base color by pinType
-  if (pin.type === 'walk-in') {
-    return '#FFD700'; // Yellow/Gold
-  } else {
-    return '#FF4444'; // Red
-  }
+function isExpiredStatus(status: ParkingStatus): boolean {
+  return (
+    status === 'walk_in_expired' ||
+    status === 'leaving_soon_expired' ||
+    status === 'expired'
+  );
 }
 
 /**
- * Get pin icon name for custom marker (if using custom icons)
- * For now, we use the default pinColor prop
+ * Helper: check if pin should be considered "verified" in UI
+ * (Leaving-soon active pins are treated as verified)
  */
-export function PinMarker({ pin, onPress, ...markerProps }: PinMarkerProps) {
+function isVerifiedStatus(status: ParkingStatus): boolean {
+  return status === 'leaving_soon_active';
+}
+
+/**
+ * Get marker color based on pin type and Firestore status
+ */
+function getPinColor(pin: MapPin): string {
+  if (isExpiredStatus(pin.status)) {
+    return '#999999'; // Grey
+  }
+
+  if (isVerifiedStatus(pin.status)) {
+    return '#4CAF50'; // Green
+  }
+
+  if (pin.type === 'walk-in') {
+    return '#FFD700'; // Yellow
+  }
+
+  return '#FF4444'; // Red
+}
+
+/**
+ * PinMarker Component
+ */
+export function PinMarker({ pin, onPress }: PinMarkerProps) {
   const pinColor = getPinColor(pin);
-  const isVerified = pin.status === 'verified';
-  const isExpired = pin.status === 'expired';
+  const isExpired = isExpiredStatus(pin.status);
 
   return (
     <Marker
-      {...markerProps}
       coordinate={pin.coordinate}
       pinColor={pinColor}
       onPress={onPress}
-      // Add opacity for expired pins
       opacity={isExpired ? 0.5 : 1}
-    >
-      {/* For verified pins, we could add a custom view with green border
-          For MVP, we'll use the pinColor and add a title indicator */}
-    </Marker>
+    />
   );
 }
 
 export default PinMarker;
-
-
-
-

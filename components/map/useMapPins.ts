@@ -6,6 +6,8 @@
 import { useState, useEffect } from 'react';
 import { listenToNearbySpots } from '@/services/parkingService';
 import { ParkingSpot } from '@/models/firestore';
+import { ParkingStatus } from '@/models/firestore';
+
 
 export interface MapPin {
   id: string;
@@ -14,7 +16,7 @@ export interface MapPin {
     longitude: number;
   };
   type: 'walk-in' | 'leaving-soon';
-  status: 'potentially-free' | 'verified' | 'expired' | 'occupied';
+  status: ParkingStatus;
   expiresAt: number;
   authorId: string;
   willLeaveIn?: number;

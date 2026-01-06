@@ -59,11 +59,8 @@ export default function UsernameScreen() {
       return;
     }
 
-    // Store username in route params for next screen
-    router.push({
-      pathname: '/onboarding/vehicle',
-      params: { username: username.trim() },
-    });
+    // Store username in route params for next onboarding step in stack.
+    router.push({ pathname: '/onboarding/vehicle', params: { username: username.trim() } });
   };
 
   return (
