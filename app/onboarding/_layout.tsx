@@ -8,7 +8,7 @@ export default function OnboardingLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerStyle: {
           backgroundColor: '#fff',
         },
@@ -46,6 +46,7 @@ export default function OnboardingLayout() {
     </Stack>
   );
 }
+
 
 
 

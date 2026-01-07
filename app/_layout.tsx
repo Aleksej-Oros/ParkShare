@@ -62,11 +62,11 @@ function RootLayoutNav() {
 
         <Stack.Screen
           name="map/add"
-          options={{ presentation: 'modal' }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen
           name="map/edit"
-          options={{ presentation: 'modal' }}
+          options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
     </Stack>

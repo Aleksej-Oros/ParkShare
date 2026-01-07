@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile.realtime';
 import { updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/firebase';
 import { upsertUser } from '@/services/userService';
@@ -28,7 +28,7 @@ export default function ConfirmScreen() {
     color: string;
   }>();
   const { user } = useAuth();
-  const { reloadProfile } = useProfile();
+  const { profile } = useProfile(user?.uid ?? null);
   const [loading, setLoading] = useState(false);
 
   const handleComplete = async () => {
@@ -60,8 +60,8 @@ export default function ConfirmScreen() {
         updatedAt: serverTimestamp(),
       });
 
-      // Reload profile data to refresh local state
-      await reloadProfile();
+      // Profile update will be detected by profile state hook and AuthGuard.
+      // No manual reloadProfile needed.
     } catch (error: any) {
       console.error('[ConfirmScreen] Error creating user:', error);
       Alert.alert(

@@ -6,14 +6,14 @@ import ParkPointsBar from '@/components/ParkPointsBar';
 import { logout } from '@/features/auth/authSlice';
 import { RootState, AppDispatch } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile.realtime';
 import { updateUser } from '@/services/userService';
 import { isValidBrand, isValidModelForBrand, getModelsForBrand } from '@/utils/vehicleData';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user: authUser } = useAuth();
-  const { profile, reloadProfile } = useProfile();
+  const { profile } = useProfile(authUser?.uid ?? null);
   
   const [isEditing, setIsEditing] = useState(false);
   const [editingBrand, setEditingBrand] = useState('');
@@ -26,7 +26,7 @@ export default function ProfileScreen() {
   // Reload profile on mount to ensure fresh data
   useEffect(() => {
     if (authUser) {
-      reloadProfile();
+      // Profile updates are handled through React state/effect on save.
     }
   }, [authUser]);
 
@@ -87,7 +87,6 @@ export default function ProfileScreen() {
         vehicleModel: editingModel.trim(),
         vehicleColor: editingColor.trim(),
       });
-      await reloadProfile();
       setIsEditing(false);
       setErrors({});
       Alert.alert('Success', 'Profile updated successfully!');

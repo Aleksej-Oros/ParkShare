@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { router, useSegments } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile.realtime';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
