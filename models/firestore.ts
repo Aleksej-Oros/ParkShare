@@ -18,6 +18,12 @@ export interface User {
   isPremium: boolean;
   isActive: boolean; // for soft-deletes or disabling users
   isOnboarded: boolean; // true if user has completed onboarding
+
+  // --- Trust Metrics Phase 2A (Optional) ---
+  pinsCreated?: number;
+  pinsVerified?: number;
+  pinsExpired?: number;
+  lastActivityAt?: number;
 }
 
 /**

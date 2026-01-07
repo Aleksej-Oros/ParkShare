@@ -70,6 +70,18 @@ function convertToParkingSpot(docId: string, data: any): ParkingSpot {
 export async function createParkingSpot(
   spotData: Omit<ParkingSpot, 'id'>
 ): Promise<string> {
+  // Trust Metrics: Atomically increment pinsCreated and set lastActivityAt on user
+  try {
+    const { doc, updateDoc, increment } = await import('firebase/firestore');
+    const userRef = doc(firestore, 'users', spotData.userId);
+    await updateDoc(userRef, {
+      pinsCreated: increment(1),
+      lastActivityAt: Date.now(),
+    });
+  } catch (e) {
+    // Fails silently: do not block pin creation for metrics
+    console.warn('[TrustMetrics] Unable to update pinsCreated/lastActivityAt', e);
+  }
   // Validation
   if (!spotData.userId || !spotData.userId.trim()) {
     throw new Error('User ID is required');
@@ -341,6 +353,20 @@ export async function markSpotAsOccupied(spotId: string): Promise<void> {
  * @throws Error if spot not found or update fails
  */
 export async function expireParkingSpot(spotId: string): Promise<void> {
+  // Trust Metrics: increment pinsExpired for the pin author
+  try {
+    const spot = await getParkingSpotById(spotId);
+    if (spot && spot.userId) {
+      const { doc, updateDoc, increment } = await import('firebase/firestore');
+      const userRef = doc(firestore, 'users', spot.userId);
+      await updateDoc(userRef, {
+        pinsExpired: increment(1),
+      });
+    }
+  } catch (e) {
+    // Fails silently to avoid affecting main expiry logic
+    console.warn('[TrustMetrics] Unable to increment pinsExpired for author', e);
+  }
   await updateParkingSpotStatus(spotId, 'expired');
 }
 
@@ -612,6 +638,20 @@ export async function confirmParking(
   spotId: string,
   confirmerUserId: string
 ): Promise<void> {
+  // Trust Metrics: increment pinsVerified for the original author
+  try {
+    const spot = await getParkingSpotById(spotId);
+    if (spot && spot.userId) {
+      const { doc, updateDoc, increment } = await import('firebase/firestore');
+      const userRef = doc(firestore, 'users', spot.userId);
+      await updateDoc(userRef, {
+        pinsVerified: increment(1),
+      });
+    }
+  } catch (e) {
+    // Fails silently
+    console.warn('[TrustMetrics] Unable to increment pinsVerified for pin author', e);
+  }
   const spotRef = doc(firestore, COLLECTION, spotId);
   await runTransaction(firestore, async (trx) => {
     const docSnap = await trx.get(spotRef);

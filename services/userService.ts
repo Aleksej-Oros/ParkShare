@@ -490,6 +490,60 @@ export async function deactivateUser(userId: string): Promise<void> {
  * @returns Array of User objects
  */
 export async function getUsersByIds(userIds: string[]): Promise<User[]> {
+
+/**
+ * Pure helper to recalculate reliabilityScore for a user, following Phase 2B-2 rules.
+ * This function never writes to Firestore and is side-effect free.
+ *
+ * Rules:
+ * - Base score: 50
+ * - Verified pins bonus: +10 per pinsVerified
+ * - Created pins bonus: +1 per pinsCreated (cap +10)
+ * - Expired pins are ignored (no penalty!)
+ * - Inactivity decay: for every full 7 days inactive, -1 to score.
+ *   If lastActivityAt is missing, no decay is applied.
+ * - Return value is clamped between 0 and 100
+ * - Missing trust fields are treated as zero/undefined
+ *
+ * Note: Pins expired are ignored for trust and not penalized as per spec.
+ *
+ * @param user Firestore User object
+ * @returns new reliabilityScore (number)
+ */
+export function recalculateReliabilityScore(user: Partial<User>): number {
+  let score = 50;
+  const pinsVerified = typeof user.pinsVerified === 'number' ? user.pinsVerified : 0;
+  const pinsCreated = typeof user.pinsCreated === 'number' ? user.pinsCreated : 0;
+  // Each verified pin is +10 to reliability
+  score += pinsVerified * 10;
+  // Each created pin is +1 to reliability (up to +10)
+  score += Math.min(pinsCreated, 10);
+  // No penalty for expired pins (as per locked rule)
+
+  // Inactivity decay: full 7-day periods only (no partial)
+  if (user.lastActivityAt && typeof user.lastActivityAt === 'number') {
+    const msInactive = Date.now() - user.lastActivityAt;
+    const weeksInactive = Math.floor(msInactive / (1000 * 60 * 60 * 24 * 7));
+    score -= weeksInactive;
+  }
+  // Clamp between 0 and 100
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+/**
+ * Loads the user from Firestore and writes a new reliabilityScore only if changed
+ * Calls recalculateReliabilityScore for deterministic scoring.
+ * Does NOT change any other field and is safe for missing/old users.
+ */
+export async function updateReliabilityScoreIfNeeded(userId: string): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user) return;
+  const newScore = recalculateReliabilityScore(user);
+  if (typeof user.reliabilityScore !== 'number' || user.reliabilityScore !== newScore) {
+    await updateUser(userId, { reliabilityScore: newScore });
+  }
+}
+
   if (!userIds || userIds.length === 0) {
     return [];
   }
