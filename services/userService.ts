@@ -490,6 +490,24 @@ export async function deactivateUser(userId: string): Promise<void> {
  * @returns Array of User objects
  */
 export async function getUsersByIds(userIds: string[]): Promise<User[]> {
+  if (!userIds || userIds.length === 0) {
+    return [];
+  }
+  try {
+    const users: User[] = [];
+    const promises = userIds.map((id) => getUserById(id));
+    const results = await Promise.all(promises);
+    results.forEach((user) => {
+      if (user) {
+        users.push(user);
+      }
+    });
+    return users;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to fetch users');
+  }
+}
+
 
 /**
  * Pure helper to recalculate reliabilityScore for a user, following Phase 2B-2 rules.
@@ -531,6 +549,61 @@ export function recalculateReliabilityScore(user: Partial<User>): number {
 }
 
 /**
+ * calculateUnlockedBadges - Phase 2C-1 pure helper function
+ *
+ * Calculates which new badge(s) a user is eligible for, based on their activity.
+ * - Only ADDs badges, never removes existing ones for idempotency & auditability.
+ * - Missing fields are treated as zero/false.
+ * - Logic is separated from Firestore for determinism, testing, and to avoid side effects.
+ *
+ * @param user Partial<User>
+ * @returns string[] unlocked badge names (not already present in user.badges)
+ */
+export function calculateUnlockedBadges(user: Partial<User>): string[] {
+  const badges: string[] = [];
+  // Defensive: Use array for badges, fallback to empty
+  const userBadges = Array.isArray(user.badges) ? user.badges : [];
+  // Trusted source badge
+  if (!userBadges.includes('trusted-source') && (typeof user.pinsVerified === 'number' ? user.pinsVerified : 0) >= 3) {
+    badges.push('trusted-source');
+  }
+  // Active driver badge
+  if (!userBadges.includes('active-driver') && (typeof user.pinsCreated === 'number' ? user.pinsCreated : 0) >= 10) {
+    badges.push('active-driver');
+  }
+  // Early adopter badge
+  if (!userBadges.includes('early-adopter') && (user.isTester === true)) {
+    badges.push('early-adopter');
+  }
+  return badges;
+}
+
+/**
+ * updateBadgesIfNeeded - Phase 2C-1 backend badge updater
+ *
+ * Ensures newly achieved badges are written to Firestore.
+ * Badges are only appended if missing; never removed, ensuring idempotency and auditability.
+ * This logic is separated (pure helper vs Firestore write) for easier testing, safety, and to support future changes/rules.
+ *
+ * No action if user missing or all badges already awarded.
+ * Does not throw if badge already exists, as addBadge is expected to handle that.
+ *
+ * @param userId string
+ */
+export async function updateBadgesIfNeeded(userId: string): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user) return;
+  const newBadges = calculateUnlockedBadges(user);
+  if (newBadges.length === 0) return;
+  for (const badge of newBadges) {
+    try {
+      await addBadge(userId, badge);
+    } catch (e) {
+      // Ignore badge already exists, do not throw
+    }
+  }
+}
+/**
  * Loads the user from Firestore and writes a new reliabilityScore only if changed
  * Calls recalculateReliabilityScore for deterministic scoring.
  * Does NOT change any other field and is safe for missing/old users.
@@ -541,26 +614,5 @@ export async function updateReliabilityScoreIfNeeded(userId: string): Promise<vo
   const newScore = recalculateReliabilityScore(user);
   if (typeof user.reliabilityScore !== 'number' || user.reliabilityScore !== newScore) {
     await updateUser(userId, { reliabilityScore: newScore });
-  }
-}
-
-  if (!userIds || userIds.length === 0) {
-    return [];
-  }
-
-  try {
-    const users: User[] = [];
-    const promises = userIds.map((id) => getUserById(id));
-    const results = await Promise.all(promises);
-
-    results.forEach((user) => {
-      if (user) {
-        users.push(user);
-      }
-    });
-
-    return users;
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to fetch users');
   }
 }

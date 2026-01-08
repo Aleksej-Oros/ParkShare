@@ -235,7 +235,50 @@ export function PinModal({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.modalBody}>
+          <View style={styles.trustHeaderSection}>
+  {/* Trust Header - User Source, Score, Vehicle (for "leaving-soon") */}
+  {loadingProfile ? (
+    <View style={styles.trustRowSkeleton}>
+      <ActivityIndicator size="small" color="#2f95dc" />
+      <Text style={styles.trustLabel}>Loading user…</Text>
+    </View>
+  ) : !authorProfile && (
+    <View style={styles.trustRowMissing}>
+      <Text style={styles.trustLabel}>Unknown user</Text>
+    </View>
+  )}
+  {authorProfile && (
+    <View style={styles.trustRow}>
+      {/* DisplayName always for both types */}
+      <Text style={styles.trustLabel}>Source:</Text>
+      <Text style={styles.trustValue}>
+        {authorProfile.displayName?.trim() || 'Anonymous'}
+      </Text>
+    </View>
+  )}
+  {authorProfile && (
+    <View style={styles.trustRow}>
+      <Text style={styles.trustLabel}>Trust score:</Text>
+      <Text style={styles.trustValue}>
+        {typeof authorProfile.reliabilityScore === 'number' ? `${authorProfile.reliabilityScore} / 100` : 'N/A'}
+      </Text>
+    </View>
+  )}
+  {/* Show vehicle info for leaving-soon only and only on user fetch success */}
+  {authorProfile && pin.type === 'leaving-soon' && (
+    <View style={styles.trustRow}>
+      <Text style={styles.trustLabel}>Vehicle:</Text>
+      <Text style={styles.trustValue}>
+        {/* show as one line, only fields that exist, else fallback */}
+        {authorProfile.vehicleBrand || authorProfile.vehicleModel || authorProfile.vehicleColor
+          ? [authorProfile.vehicleBrand, authorProfile.vehicleModel, authorProfile.vehicleColor].filter(Boolean).join(' ')
+          : '—'}
+      </Text>
+    </View>
+  )}
+</View>
+
+<View style={styles.modalBody}>
             {/* Title (if available) */}
             {pin.title && (
               <View style={styles.infoRow}>
@@ -245,12 +288,6 @@ export function PinModal({
             )}
 
             {/* Description (if available) */}
-            {pin.description && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Description:</Text>
-                <Text style={styles.infoValue}>{pin.description}</Text>
-              </View>
-            )}
 
             {/* Pin Type */}
             <View style={styles.infoRow}>
@@ -353,6 +390,40 @@ export function PinModal({
 }
 
 const styles = StyleSheet.create({
+  trustHeaderSection: {
+    paddingBottom: 12,
+    marginBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2f95dc22',
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 6,
+  },
+  trustRowSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingBottom: 6,
+  },
+  trustRowMissing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 6,
+  },
+  trustLabel: {
+    fontWeight: '500',
+    color: '#666',
+    marginRight: 10,
+    fontSize: 15,
+    minWidth: 90,
+  },
+  trustValue: {
+    fontWeight: '600',
+    color: '#222',
+    fontSize: 15,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

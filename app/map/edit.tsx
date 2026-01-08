@@ -28,7 +28,6 @@ export default function EditParkingSpotScreen() {
   const spotId = params.spotId;
 
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [selectedPinType, setSelectedPinType] = useState<PinType | null>(null);
   const [willLeaveInMinutes, setWillLeaveInMinutes] = useState<number>(15);
   const [isPaid, setIsPaid] = useState<boolean>(false);
@@ -77,7 +76,6 @@ export default function EditParkingSpotScreen() {
         const isPaidValue = spotData.isPaid || false;
         
         setTitle(titleValue);
-        setDescription(descriptionValue);
         setSelectedPinType(pinTypeValue);
         setWillLeaveInMinutes(willLeaveInValue);
         setIsPaid(isPaidValue);
@@ -85,7 +83,6 @@ export default function EditParkingSpotScreen() {
         // Store original values for change detection
         setOriginalValues({
           title: titleValue,
-          description: descriptionValue,
           pinType: pinTypeValue,
           willLeaveIn: willLeaveInValue,
           isPaid: isPaidValue,
@@ -106,9 +103,6 @@ export default function EditParkingSpotScreen() {
   const validateForm = (): string | null => {
     if (!title || title.trim().length <= 3) {
       return 'Title must be longer than 3 characters';
-    }
-    if (!description || description.trim().length <= 10) {
-      return 'Description must be longer than 10 characters';
     }
     if (!selectedPinType) {
       return 'Please select a pin type';
@@ -165,7 +159,6 @@ export default function EditParkingSpotScreen() {
       // Update parking spot - always set willLeaveIn to prevent undefined
       await updateParkingSpot(spotId, user.uid, {
         title: title.trim(),
-        description: description.trim(),
         pinType,
         status,
         willLeaveIn, // Always set, never undefined
@@ -236,24 +229,6 @@ export default function EditParkingSpotScreen() {
             )}
           </View>
 
-          {/* Description Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe the parking spot (min. 11 characters)"
-              placeholderTextColor="#999"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-              editable={!saving}
-            />
-            {description.length > 0 && description.length <= 10 && (
-              <Text style={styles.errorText}>Description must be longer than 10 characters</Text>
-            )}
-          </View>
 
           {/* Pin Type Selection */}
           <View style={styles.inputContainer}>
@@ -396,7 +371,6 @@ export default function EditParkingSpotScreen() {
             // Check if any values have changed
             const hasChanges = originalValues ? (
               title.trim() !== originalValues.title ||
-              description.trim() !== originalValues.description ||
               selectedPinType !== originalValues.pinType ||
               (selectedPinType === 'leaving-soon' && willLeaveInMinutes !== originalValues.willLeaveIn) ||
               isPaid !== originalValues.isPaid

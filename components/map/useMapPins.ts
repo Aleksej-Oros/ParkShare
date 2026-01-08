@@ -3,7 +3,8 @@
  * Real-time Firestore subscription for parking spots
  * Returns pins formatted for map display
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { listenToNearbySpots } from '@/services/parkingService';
 import { ParkingSpot } from '@/models/firestore';
 import { ParkingStatus } from '@/models/firestore';
@@ -31,6 +32,8 @@ export interface MapPin {
  * @param center - User location center point
  * @param radiusM - Radius in meters (default: 5000m = 5km)
  */
+const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
+
 export function useMapPins(
   center: { latitude: number; longitude: number } | null,
   radiusM: number = 5000
@@ -38,6 +41,9 @@ export function useMapPins(
   const [pins, setPins] = useState<MapPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const bufferRef = useRef<MapPin[] | null>(null);
+  const timeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!center) {
@@ -89,13 +95,41 @@ export function useMapPins(
         };
       });
 
-      setPins(mapPins);
-      setLoading(false);
+      // Buffer/delay logic for free users
+      const isPremium = user?.isPremium === true;
+      // treat undefined/null as free
+      if (isPremium) {
+        // Premium: immediate updates, clear any pending free-user buffer
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setPins(mapPins);
+        setLoading(false);
+      } else {
+        // Free: apply artificial delay
+        bufferRef.current = mapPins;
+        setLoading(false);
+        // Cancel any pending update
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = setTimeout(() => {
+          setPins(bufferRef.current || []);
+          timeoutRef.current = null;
+        }, FREE_USER_PIN_DELAY_MS);
+      }
     });
 
     return () => {
+      // Clean up timeout on unmount (free user)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       unsubscribe();
     };
+
   }, [center?.latitude, center?.longitude, radiusM]);
 
   return { pins, loading, error };

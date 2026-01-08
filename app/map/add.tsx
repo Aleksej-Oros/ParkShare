@@ -29,7 +29,6 @@ export default function AddParkingSpotScreen() {
   }>();
 
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [selectedPinType, setSelectedPinType] = useState<PinType | null>(null);
   const [willLeaveInMinutes, setWillLeaveInMinutes] = useState<number>(15); // Default 15 minutes for leaving-soon
   const [isPaid, setIsPaid] = useState<boolean>(false); // Default to Free
@@ -44,9 +43,6 @@ export default function AddParkingSpotScreen() {
   const validateForm = (): string | null => {
     if (!title || title.trim().length <= 3) {
       return 'Title must be longer than 3 characters';
-    }
-    if (!description || description.trim().length <= 10) {
-      return 'Description must be longer than 10 characters';
     }
     if (!selectedPinType) {
       return 'Please select a pin type';
@@ -126,7 +122,6 @@ export default function AddParkingSpotScreen() {
         priorityScore: 0,
         // Store title and description
         title: title.trim(),
-        description: description.trim(),
       });
 
       // Success - navigate back
@@ -183,24 +178,6 @@ export default function AddParkingSpotScreen() {
             )}
           </View>
 
-          {/* Description Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe the parking spot (min. 11 characters)"
-              placeholderTextColor="#999"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-              editable={!loading}
-            />
-            {description.length > 0 && description.length <= 10 && (
-              <Text style={styles.errorText}>Description must be longer than 10 characters</Text>
-            )}
-          </View>
 
           {/* Pin Type Selection */}
           <View style={styles.inputContainer}>
