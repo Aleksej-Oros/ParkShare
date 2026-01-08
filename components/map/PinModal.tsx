@@ -280,12 +280,6 @@ export function PinModal({
 
 <View style={styles.modalBody}>
             {/* Title (if available) */}
-            {pin.title && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Title:</Text>
-                <Text style={styles.infoValue}>{pin.title}</Text>
-              </View>
-            )}
 
             {/* Description (if available) */}
 
@@ -337,10 +331,6 @@ export function PinModal({
             )}
 
             {/* Status */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Status:</Text>
-              <Text style={styles.infoValue}>{pin.status}</Text>
-            </View>
 
             {/* Paid/Free */}
             <View style={styles.infoRow}>

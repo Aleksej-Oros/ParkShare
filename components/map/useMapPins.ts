@@ -95,11 +95,10 @@ export function useMapPins(
         };
       });
 
-      // Buffer/delay logic for free users
+      // New delay logic: show own pins and premium users' pins instantly
       const isPremium = user?.isPremium === true;
-      // treat undefined/null as free
+      const currentUserId = user?.uid;
       if (isPremium) {
-        // Premium: immediate updates, clear any pending free-user buffer
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
           timeoutRef.current = null;
@@ -107,15 +106,16 @@ export function useMapPins(
         setPins(mapPins);
         setLoading(false);
       } else {
-        // Free: apply artificial delay
-        bufferRef.current = mapPins;
+        // Partition pins: show pins authored by current user immediately, others are delayed
+        const ownAndImmediatePins = mapPins.filter((pin) => pin.authorId === currentUserId);
+        const otherPins = mapPins.filter((pin) => pin.authorId !== currentUserId);
+        setPins(ownAndImmediatePins);
         setLoading(false);
-        // Cancel any pending update
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
         }
         timeoutRef.current = setTimeout(() => {
-          setPins(bufferRef.current || []);
+          setPins([...ownAndImmediatePins, ...otherPins]);
           timeoutRef.current = null;
         }, FREE_USER_PIN_DELAY_MS);
       }
