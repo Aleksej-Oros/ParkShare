@@ -5,10 +5,9 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { listenToNearbySpots } from '@/services/parkingService';
-import { ParkingSpot } from '@/models/firestore';
-import { ParkingStatus } from '@/models/firestore';
-
+import { ParkingSpot, ParkingStatus } from '@/models/firestore';
 
 export interface MapPin {
   id: string;
@@ -23,15 +22,8 @@ export interface MapPin {
   willLeaveIn?: number;
   isPaid: boolean;
   createdAt?: number;
-  title?: string;
-  description?: string;
 }
 
-/**
- * Subscribe to parking spots in real-time
- * @param center - User location center point
- * @param radiusM - Radius in meters (default: 5000m = 5km)
- */
 const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
 
 export function useMapPins(
@@ -41,9 +33,11 @@ export function useMapPins(
   const [pins, setPins] = useState<MapPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const bufferRef = useRef<MapPin[] | null>(null);
+
   const timeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+
   const { user } = useAuth();
+  const { profile, loading: profileLoading } = useProfile(user?.uid || null);
 
   useEffect(() => {
     if (!center) {
@@ -54,50 +48,47 @@ export function useMapPins(
     setLoading(true);
     setError(null);
 
-    // Subscribe to real-time updates
     const unsubscribe = listenToNearbySpots(center, radiusM, (spots: ParkingSpot[]) => {
       const now = Date.now();
-      
-      // Filter out expired pins client-side - CRITICAL: expiresAt < now means expired
-      // This ensures expired pins auto-disappear from map in real-time
+
+      // 1️⃣ Filter expired pins FIRST (no expired pin should ever render)
       const activeSpots = spots.filter((spot) => {
-        // Primary check: expiresAt must be in the future (milliseconds)
-        if (spot.expiresAt <= now) {
-          return false; // Pin is expired, remove from map
+        if (typeof spot.expiresAt !== 'number' || spot.expiresAt <= now) {
+          return false;
         }
-        // Secondary check: status must not indicate expiration
         if (['walk_in_expired', 'leaving_soon_expired', 'expired'].includes(spot.status)) {
-          return false; // Status indicates expiration, remove from map
+          return false;
         }
-        return true; // Pin is active, keep on map
+        return true;
       });
 
-      // Transform ParkingSpot to MapPin format
-      const mapPins: MapPin[] = activeSpots.map((spot) => {
-        // Try to get createdAt from spot, fallback to current time
-        const createdAt = spot.createdAt || Date.now();
+      // 2️⃣ Transform to MapPin
+      const mapPins: MapPin[] = activeSpots.map((spot) => ({
+        id: spot.id,
+        coordinate: {
+          latitude: spot.location.latitude,
+          longitude: spot.location.longitude,
+        },
+        type: spot.pinType,
+        status: spot.status,
+        expiresAt: spot.expiresAt,
+        authorId: spot.userId,
+        willLeaveIn: spot.willLeaveIn,
+        isPaid: spot.isPaid,
+        createdAt: spot.createdAt || Date.now(),
+      }));
 
-        return {
-          id: spot.id,
-          coordinate: {
-            latitude: spot.location.latitude,
-            longitude: spot.location.longitude,
-          },
-          type: spot.pinType,
-          status: spot.status,
-          expiresAt: spot.expiresAt,
-          authorId: spot.userId,
-          willLeaveIn: spot.willLeaveIn,
-          isPaid: spot.isPaid,
-          createdAt,
-          title: spot.title,
-          description: spot.description,
-        };
-      });
+      // 3️⃣ DO NOT apply delay until profile is loaded
+      if (profileLoading) {
+        setPins(mapPins);
+        setLoading(false);
+        return;
+      }
 
-      // New delay logic: show own pins and premium users' pins instantly
-      const isPremium = user?.isPremium === true;
+      const isPremium = profile?.isPremium === true;
       const currentUserId = user?.uid;
+
+      // 4️⃣ Premium users: instant pins
       if (isPremium) {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
@@ -105,38 +96,43 @@ export function useMapPins(
         }
         setPins(mapPins);
         setLoading(false);
-      } else {
-        // Partition pins: show pins authored by current user immediately, others are delayed
-        const ownAndImmediatePins = mapPins.filter((pin) => pin.authorId === currentUserId);
-        const otherPins = mapPins.filter((pin) => pin.authorId !== currentUserId);
-        setPins(ownAndImmediatePins);
-        setLoading(false);
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-        timeoutRef.current = setTimeout(() => {
-          setPins([...ownAndImmediatePins, ...otherPins]);
-          timeoutRef.current = null;
-        }, FREE_USER_PIN_DELAY_MS);
+        return;
       }
+
+      // 5️⃣ Free users: own pins instant, others delayed
+      const ownPins = mapPins.filter((pin) => pin.authorId === currentUserId);
+      const otherPins = mapPins.filter((pin) => pin.authorId !== currentUserId);
+
+      setPins(ownPins);
+      setLoading(false);
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        setPins([...ownPins, ...otherPins]);
+        timeoutRef.current = null;
+      }, FREE_USER_PIN_DELAY_MS);
     });
 
     return () => {
-      // Clean up timeout on unmount (free user)
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
       unsubscribe();
     };
-
-  }, [center?.latitude, center?.longitude, radiusM]);
+  }, [
+    center?.latitude,
+    center?.longitude,
+    radiusM,
+    profileLoading,
+    profile?.isPremium,
+    user?.uid,
+  ]);
 
   return { pins, loading, error };
 }
 
 export default useMapPins;
-
-
-
-
