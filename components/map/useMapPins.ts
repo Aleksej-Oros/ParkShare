@@ -22,6 +22,7 @@ export interface MapPin {
   willLeaveIn?: number;
   isPaid: boolean;
   createdAt?: number;
+  description?: string;
 }
 
 const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
@@ -76,6 +77,7 @@ export function useMapPins(
         willLeaveIn: spot.willLeaveIn,
         isPaid: spot.isPaid,
         createdAt: spot.createdAt || Date.now(),
+        description: spot.description,
       }));
 
       // 3️⃣ DO NOT apply delay until profile is loaded

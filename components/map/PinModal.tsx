@@ -227,9 +227,7 @@ export function PinModal({
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {pin.title || pinTypeLabel}
-            </Text>
+            <Text style={styles.modalTitle}>{pinTypeLabel}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
@@ -281,7 +279,13 @@ export function PinModal({
 <View style={styles.modalBody}>
             {/* Title (if available) */}
 
-            {/* Description (if available) */}
+            {/* Description (if non-empty) */}
+{pin.description && pin.description.trim() !== '' && (
+  <View style={styles.infoRow}>
+    <Text style={styles.infoLabel}>Description:</Text>
+    <Text style={styles.infoValue}>{pin.description}</Text>
+  </View>
+)}
 
             {/* Pin Type */}
             <View style={styles.infoRow}>

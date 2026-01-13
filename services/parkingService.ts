@@ -24,8 +24,10 @@ import {
   QuerySnapshot,
   Query,
   Unsubscribe,
+  FieldValue,
 } from 'firebase/firestore';
 import { firestore } from '@/firebase';
+import { deleteField } from 'firebase/firestore';
 import { ParkingSpot, ParkingStatus, PinType } from '@/models/firestore';
 import { awardPointsForVerifiedPin, awardPointsForParkingConfirmation } from '@/services/pointsService';
 
@@ -57,7 +59,10 @@ function convertToParkingSpot(docId: string, data: any): ParkingSpot {
     vehicleModel: data.vehicleModel ? String(data.vehicleModel) : undefined,
     vehicleColor: data.vehicleColor ? String(data.vehicleColor) : undefined,
     title: data.title ? String(data.title) : undefined,
-    description: data.description ? String(data.description) : undefined,
+    description:
+  typeof data.description === 'string' && data.description.trim() !== ''
+    ? data.description
+    : undefined,
   };
 }
 
@@ -388,6 +393,7 @@ export async function updateParkingSpot(
     status?: ParkingStatus;
     willLeaveIn?: number;
     expiresAt?: number;
+    isPaid?: boolean;
   }
 ): Promise<void> {
   if (!spotId || !spotId.trim()) {
@@ -450,7 +456,13 @@ export async function updateParkingSpot(
     }
 
     if (updates.description !== undefined) {
-      updateData.description = String(updates.description || '').trim();
+      // Handle empty/whitespace-only strings by deleting the field
+      const trimmed = String(updates.description || '').trim();
+      if (trimmed === '') {
+        updateData.description = deleteField();
+      } else {
+        updateData.description = trimmed;
+      }
     }
 
     if (updates.pinType !== undefined) {
@@ -675,8 +687,11 @@ export async function confirmParking(
   });
   // Points awarding (outside transaction)
   // It's okay (for now) if these "double write" in rare race — MVP
+  const spotForPoints = await getParkingSpotById(spotId);
   await awardPointsForVerifiedPin(confirmerUserId, false);
-  await awardPointsForParkingConfirmation(spot.userId, false);
+  if (spotForPoints?.userId) {
+    await awardPointsForParkingConfirmation(spotForPoints.userId, false);
+  }
 }
 
 /**

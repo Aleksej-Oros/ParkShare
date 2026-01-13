@@ -28,7 +28,7 @@ export default function AddParkingSpotScreen() {
     longitude: string;
   }>();
 
-  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState<string | undefined>('');
   const [selectedPinType, setSelectedPinType] = useState<PinType | null>(null);
   const [willLeaveInMinutes, setWillLeaveInMinutes] = useState<number>(15); // Default 15 minutes for leaving-soon
   const [isPaid, setIsPaid] = useState<boolean>(false); // Default to Free
@@ -41,9 +41,6 @@ export default function AddParkingSpotScreen() {
 
   // Validation
   const validateForm = (): string | null => {
-    if (!title || title.trim().length <= 3) {
-      return 'Title must be longer than 3 characters';
-    }
     if (!selectedPinType) {
       return 'Please select a pin type';
     }
@@ -120,8 +117,8 @@ export default function AddParkingSpotScreen() {
         expiresAt,
         createdAt,
         priorityScore: 0,
-        // Store title and description
-        title: title.trim(),
+        // Only include description field if it is a non-empty string
+        ...(description && description.trim() ? { description: description.trim() } : {}),
       });
 
       // Success - navigate back
@@ -161,21 +158,20 @@ export default function AddParkingSpotScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* Title Input */}
+          {/* Description Input (optional) */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Title *</Text>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Enter spot title (min. 4 characters)"
+              style={[styles.input, styles.textArea]}
+              placeholder="Describe this parking spot (optional)"
               placeholderTextColor="#999"
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
               editable={!loading}
             />
-            {title.length > 0 && title.length <= 3 && (
-              <Text style={styles.errorText}>Title must be longer than 3 characters</Text>
-            )}
           </View>
 
 

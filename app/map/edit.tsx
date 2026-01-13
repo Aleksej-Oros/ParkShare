@@ -27,24 +27,21 @@ export default function EditParkingSpotScreen() {
   const params = useLocalSearchParams<{ spotId: string }>();
   const spotId = params.spotId;
 
-  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState<string>(''); // ALWAYS string
   const [selectedPinType, setSelectedPinType] = useState<PinType | null>(null);
   const [willLeaveInMinutes, setWillLeaveInMinutes] = useState<number>(15);
   const [isPaid, setIsPaid] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [spot, setSpot] = useState<ParkingSpot | null>(null);
-  
-  // Track original values to detect changes
+
   const [originalValues, setOriginalValues] = useState<{
-    title: string;
     description: string;
     pinType: PinType | null;
     willLeaveIn: number;
     isPaid: boolean;
   } | null>(null);
 
-  // Load spot data
   useEffect(() => {
     if (!spotId) {
       Alert.alert('Error', 'Invalid spot ID');
@@ -61,7 +58,6 @@ export default function EditParkingSpotScreen() {
           return;
         }
 
-        // Check ownership
         if (spotData.userId !== user?.uid) {
           Alert.alert('Error', 'You do not have permission to edit this parking spot');
           router.back();
@@ -69,20 +65,19 @@ export default function EditParkingSpotScreen() {
         }
 
         setSpot(spotData);
-        const titleValue = spotData.title || '';
-        const descriptionValue = spotData.description || '';
+
+        const descriptionValue = spotData.description ?? '';
         const pinTypeValue = spotData.pinType;
         const willLeaveInValue = spotData.willLeaveIn || 15;
         const isPaidValue = spotData.isPaid || false;
-        
-        setTitle(titleValue);
+
+        setDescription(descriptionValue);
         setSelectedPinType(pinTypeValue);
         setWillLeaveInMinutes(willLeaveInValue);
         setIsPaid(isPaidValue);
-        
-        // Store original values for change detection
+
         setOriginalValues({
-          title: titleValue,
+          description: descriptionValue,
           pinType: pinTypeValue,
           willLeaveIn: willLeaveInValue,
           isPaid: isPaidValue,
@@ -99,11 +94,7 @@ export default function EditParkingSpotScreen() {
     loadSpot();
   }, [spotId, user?.uid]);
 
-  // Validation
   const validateForm = (): string | null => {
-    if (!title || title.trim().length <= 3) {
-      return 'Title must be longer than 3 characters';
-    }
     if (!selectedPinType) {
       return 'Please select a pin type';
     }
@@ -127,9 +118,8 @@ export default function EditParkingSpotScreen() {
     setSaving(true);
 
     try {
-      const pinType: PinType = selectedPinType!;
-      
-      // Determine status based on pin type
+      const pinType: PinType = selectedPinType;
+
       let status: ParkingStatus;
       if (pinType === 'walk-in') {
         status = 'walk_in_pending';
@@ -137,18 +127,14 @@ export default function EditParkingSpotScreen() {
         status = 'leaving_soon_active';
       }
 
-      // Calculate expiresAt: extend from NOW, not from createdAt
-      // This ensures the pin doesn't disappear if it was created a while ago
       const now = Date.now();
       let expiresAt: number;
       let willLeaveIn: number;
-      
+
       if (pinType === 'walk-in') {
-        // Walk-in: expiresAt = now + 10 minutes
         willLeaveIn = 10;
         expiresAt = now + willLeaveIn * 60 * 1000;
       } else {
-        // Leaving-soon: expiresAt = now + willLeaveIn minutes
         willLeaveIn = willLeaveInMinutes;
         if (willLeaveIn < 2 || willLeaveIn > 60) {
           throw new Error('Leaving time must be between 2 and 60 minutes');
@@ -156,22 +142,18 @@ export default function EditParkingSpotScreen() {
         expiresAt = now + willLeaveIn * 60 * 1000;
       }
 
-      // Update parking spot - always set willLeaveIn to prevent undefined
       await updateParkingSpot(spotId, user.uid, {
-        title: title.trim(),
+        // Always send description as a string (empty string if cleared)
+        description: typeof description === 'string' ? description : '',
         pinType,
         status,
-        willLeaveIn, // Always set, never undefined
+        willLeaveIn,
         expiresAt,
-        isPaid, // User-selected: Free or Paid
+        isPaid,
       });
 
-      // Success - navigate back
       Alert.alert('Success', 'Parking spot updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error: any) {
       console.error('[EditParkingSpotScreen] Error updating pin:', error);
@@ -181,18 +163,22 @@ export default function EditParkingSpotScreen() {
     }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
-
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2f95dc" style={styles.loader} />
+        <ActivityIndicator size="large" color="#2f95dc" />
         <Text style={styles.loadingText}>Loading parking spot...</Text>
       </View>
     );
   }
+
+  const hasChanges = originalValues
+    ? description.trim() !== originalValues.description.trim() ||
+      selectedPinType !== originalValues.pinType ||
+      (selectedPinType === 'leaving-soon' &&
+        willLeaveInMinutes !== originalValues.willLeaveIn) ||
+      isPaid !== originalValues.isPaid
+    : true;
 
   return (
     <KeyboardAvoidingView
@@ -204,7 +190,7 @@ export default function EditParkingSpotScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.cancelButton}>
             <Ionicons name="close" size={24} color="#666" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Parking Spot</Text>
@@ -212,23 +198,21 @@ export default function EditParkingSpotScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* Title Input */}
+          {/* Description Input (optional) */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Title *</Text>
+            <Text style={styles.label}>Description (optional)</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Enter spot title (min. 4 characters)"
+              style={[styles.input, styles.textArea]}
+              placeholder="Add optional details"
               placeholderTextColor="#999"
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
               editable={!saving}
             />
-            {title.length > 0 && title.length <= 3 && (
-              <Text style={styles.errorText}>Title must be longer than 3 characters</Text>
-            )}
           </View>
-
 
           {/* Pin Type Selection */}
           <View style={styles.inputContainer}>
@@ -367,32 +351,20 @@ export default function EditParkingSpotScreen() {
           </View>
 
           {/* Submit Button */}
-          {(() => {
-            // Check if any values have changed
-            const hasChanges = originalValues ? (
-              title.trim() !== originalValues.title ||
-              selectedPinType !== originalValues.pinType ||
-              (selectedPinType === 'leaving-soon' && willLeaveInMinutes !== originalValues.willLeaveIn) ||
-              isPaid !== originalValues.isPaid
-            ) : true; // If no original values, allow save (shouldn't happen, but safety check)
-            
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  (saving || !hasChanges) && styles.submitButtonDisabled,
-                ]}
-                onPress={handleSave}
-                disabled={saving || !hasChanges}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Save Changes</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })()}
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (!hasChanges || saving) && styles.submitButtonDisabled,
+            ]}
+            onPress={handleSave}
+            disabled={!hasChanges || saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -407,15 +379,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 20,
-  },
-  loader: {
-    marginTop: '50%',
-  },
-  loadingText: {
-    textAlign: 'center',
-    marginTop: 10,
-    color: '#666',
-    fontSize: 16,
   },
   header: {
     flexDirection: 'row',
@@ -465,12 +428,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     textAlignVertical: 'top',
   },
-  errorText: {
-    color: '#ff4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
   pinTypeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -497,6 +454,34 @@ const styles = StyleSheet.create({
     color: '#2f95dc',
   },
   pinTypeTextSelected: {
+    color: '#fff',
+  },
+  paymentContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  paymentButton: {
+    flex: 1,
+    height: 80,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentButtonSelected: {
+    backgroundColor: '#2f95dc',
+    borderColor: '#2f95dc',
+  },
+  paymentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2f95dc',
+  },
+  paymentTextSelected: {
     color: '#fff',
   },
   submitButton: {
@@ -547,33 +532,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: 'italic',
   },
-  paymentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  paymentButton: {
-    flex: 1,
-    height: 80,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#f9f9f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  paymentButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
-  },
-  paymentText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2f95dc',
-  },
-  paymentTextSelected: {
-    color: '#fff',
+  loadingText: {
+    marginTop: 12,
+    textAlign: 'center',
+    color: '#666',
   },
 });
-
