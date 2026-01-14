@@ -19,6 +19,8 @@ import { getUserById } from '@/services/userService';
 import { User } from '@/models/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteParkingSpot } from '@/services/parkingService';
+import { usePremiumAccess } from '@/hooks/usePremiumAccess';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 interface PinModalProps {
   visible: boolean;
@@ -82,14 +84,24 @@ export function PinModal({
   onNavigate,
 }: PinModalProps) {
   const { user } = useAuth();
+  const { isPremium } = usePremiumAccess();
   const [authorProfile, setAuthorProfile] = useState<User | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [distance, setDistance] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
   // Check if current user is the owner
   const isOwner = user?.uid === pin?.authorId;
+
+  // Check if pin is expired (navigation disabled for expired pins)
+  const isExpired = pin
+    ? typeof pin.expiresAt === 'number' && pin.expiresAt <= Date.now()
+    : true;
+
+  // Navigation is enabled only for premium users and non-expired pins
+  const canNavigate = isPremium && !isExpired && pin !== null;
 
   // Calculate time remaining until expiration
   useEffect(() => {
@@ -215,6 +227,33 @@ export function PinModal({
         },
       ]
     );
+  };
+
+  // Handle navigate button
+  const handleNavigate = () => {
+    // Premium check: show upgrade modal for free users
+    if (!isPremium) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+
+    // Safety check: expired pins cannot be navigated to
+    if (isExpired) {
+      Alert.alert('Expired Pin', 'This parking spot has expired and cannot be navigated to.');
+      return;
+    }
+
+    // Safety check: coordinates must be valid
+    if (!pin || typeof pin.coordinate?.latitude !== 'number' || typeof pin.coordinate?.longitude !== 'number') {
+      console.warn('[PinModal] Invalid coordinates for navigation', pin?.coordinate);
+      Alert.alert('Error', 'Invalid location coordinates for navigation.');
+      return;
+    }
+
+    // Call parent navigation handler (opens native maps)
+    if (onNavigate) {
+      onNavigate();
+    }
   };
 
   return (
@@ -369,16 +408,32 @@ export function PinModal({
             </View>
           )}
 
-          {/* Navigate Button (disabled for now) */}
+          {/* Navigate Button (premium-only) */}
           <TouchableOpacity
-            style={[styles.navigateButton, styles.navigateButtonDisabled]}
-            onPress={onNavigate}
-            disabled
+            style={[
+              styles.navigateButton,
+              (!canNavigate || isExpired) && styles.navigateButtonDisabled,
+            ]}
+            onPress={handleNavigate}
+            disabled={!canNavigate || isExpired}
           >
-            <Text style={styles.navigateButtonText}>Navigate (Coming Soon)</Text>
+            <Text style={styles.navigateButtonText}>
+              {isExpired
+                ? 'Expired'
+                : isPremium
+                ? 'Navigate'
+                : 'Navigate (Premium)'}
+            </Text>
           </TouchableOpacity>
         </View>
       </Pressable>
+
+      {/* Upgrade Modal (shown to free users) */}
+      <UpgradeModal
+        visible={upgradeModalVisible}
+        onClose={() => setUpgradeModalVisible(false)}
+        message="Navigation is available for Premium users only."
+      />
     </Modal>
   );
 }

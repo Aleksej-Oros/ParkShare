@@ -22,6 +22,7 @@ import { PinMarker } from './PinMarker';
 import { PinModal } from './PinModal';
 import { ClusterMarker } from './clusterRenderer';
 import { useAuth } from '@/hooks/useAuth';
+import { openNavigation } from '@/utils/navigation';
 
 /**
  * OpenStreetMap Tile Provider
@@ -260,8 +261,32 @@ export default function MapScreen() {
           setModalVisible(false);
           setSelectedPin(null);
         }}
-        onNavigate={() => {
-          Alert.alert('Coming Soon', 'Navigation will be available in the next phase.');
+        onNavigate={async () => {
+          if (!selectedPin) return;
+
+          // Safety check: coordinates must be valid
+          const { latitude, longitude } = selectedPin.coordinate;
+          if (
+            typeof latitude !== 'number' ||
+            typeof longitude !== 'number' ||
+            isNaN(latitude) ||
+            isNaN(longitude)
+          ) {
+            console.warn('[MapScreen] Invalid coordinates for navigation', selectedPin.coordinate);
+            Alert.alert('Error', 'Invalid location coordinates for navigation.');
+            return;
+          }
+
+          try {
+            // Open native navigation app
+            await openNavigation(latitude, longitude, 'Parking Spot');
+          } catch (error: any) {
+            console.error('[MapScreen] Error opening navigation:', error);
+            Alert.alert(
+              'Navigation Error',
+              error.message || 'Failed to open navigation. Please try again.'
+            );
+          }
         }}
       />
     </View>
