@@ -28,6 +28,9 @@ interface PinModalProps {
   userLocation: { latitude: number; longitude: number } | null;
   onClose: () => void;
   onNavigate?: () => void;
+  onShowRoute?: () => void;
+  onHideRoute?: () => void;
+  hasRoute?: boolean; // Whether a route is currently displayed for this pin
 }
 
 /**
@@ -82,6 +85,9 @@ export function PinModal({
   userLocation,
   onClose,
   onNavigate,
+  onShowRoute,
+  onHideRoute,
+  hasRoute = false,
 }: PinModalProps) {
   const { user } = useAuth();
   const { isPremium } = usePremiumAccess();
@@ -102,6 +108,9 @@ export function PinModal({
 
   // Navigation is enabled only for premium users and non-expired pins
   const canNavigate = isPremium && !isExpired && pin !== null;
+  
+  // Route preview is enabled only for premium users and non-expired pins
+  const canShowRoute = isPremium && !isExpired && pin !== null && userLocation !== null;
 
   // Calculate time remaining until expiration
   useEffect(() => {
@@ -253,6 +262,50 @@ export function PinModal({
     // Call parent navigation handler (opens native maps)
     if (onNavigate) {
       onNavigate();
+    }
+  };
+
+  // Handle show/hide route button (toggles based on current state)
+  const handleRouteToggle = () => {
+    // If route is already shown, hide it
+    if (hasRoute && onHideRoute) {
+      onHideRoute();
+      return;
+    }
+
+    // Otherwise, show route
+    // Premium check: show upgrade modal for free users
+    if (!isPremium) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+
+    // Safety check: expired pins cannot show route
+    if (isExpired) {
+      Alert.alert('Expired Pin', 'This parking spot has expired and cannot show route.');
+      return;
+    }
+
+    // Safety check: coordinates must be valid
+    if (!pin || !userLocation) {
+      Alert.alert('Error', 'Unable to show route. Location data is missing.');
+      return;
+    }
+
+    if (
+      typeof pin.coordinate?.latitude !== 'number' ||
+      typeof pin.coordinate?.longitude !== 'number' ||
+      typeof userLocation.latitude !== 'number' ||
+      typeof userLocation.longitude !== 'number'
+    ) {
+      console.warn('[PinModal] Invalid coordinates for route', { pin: pin?.coordinate, userLocation });
+      Alert.alert('Error', 'Invalid location coordinates for route.');
+      return;
+    }
+
+    // Call parent route handler
+    if (onShowRoute) {
+      onShowRoute();
     }
   };
 
@@ -408,6 +461,22 @@ export function PinModal({
             </View>
           )}
 
+          {/* Show/Hide Route Button (premium-only) */}
+          {canShowRoute && (
+            <TouchableOpacity
+              style={[
+                styles.showRouteButton,
+                hasRoute && styles.hideRouteButton,
+              ]}
+              onPress={handleRouteToggle}
+              disabled={!canShowRoute}
+            >
+              <Text style={styles.showRouteButtonText}>
+                {hasRoute ? 'Hide Route' : 'Show Route'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Navigate Button (premium-only) */}
           <TouchableOpacity
             style={[
@@ -528,6 +597,21 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     color: '#000',
+    fontWeight: '600',
+  },
+  showRouteButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  hideRouteButton: {
+    backgroundColor: '#ff4444',
+  },
+  showRouteButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
   navigateButton: {

@@ -12,7 +12,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import MapView, { Region, UrlTile } from 'react-native-maps';
+import MapView, { Region, UrlTile, Polyline } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,8 @@ import { PinMarker } from './PinMarker';
 import { PinModal } from './PinModal';
 import { ClusterMarker } from './clusterRenderer';
 import { useAuth } from '@/hooks/useAuth';
+import { usePremiumAccess } from '@/hooks/usePremiumAccess';
+import { useRoutePreview } from '@/hooks/useRoutePreview';
 import { openNavigation } from '@/utils/navigation';
 
 /**
@@ -42,6 +44,7 @@ const OSM_TILE_URL_TEMPLATE = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
  */
 export default function MapScreen() {
   const { user } = useAuth();
+  const { isPremium } = usePremiumAccess();
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -53,6 +56,9 @@ export default function MapScreen() {
 
   // Get real-time parking pins
   const { pins, loading: pinsLoading } = useMapPins(location, 5000); // 5km radius
+
+  // Route preview hook (premium-only)
+  const routePreview = useRoutePreview(isPremium);
 
   // Request location permission and get user location
   useEffect(() => {
@@ -97,9 +103,89 @@ export default function MapScreen() {
 
   // Handle pin press
   const handlePinPress = (pin: MapPin) => {
+    // If selecting a different pin, clear the previous route
+    if (selectedPin && selectedPin.id !== pin.id) {
+      routePreview.clearRoute();
+      routeRequestedRef.current = false;
+    }
     setSelectedPin(pin);
     setModalVisible(true);
   };
+
+  // Track if route was requested via Show Route button (prevents clearing)
+  const routeRequestedRef = useRef(false);
+
+  // Handle show route button press
+  const handleShowRoute = async () => {
+    if (!selectedPin || !location) {
+      Alert.alert('Error', 'Missing location or pin data');
+      return;
+    }
+
+    console.log('[MapScreen] Show Route clicked', {
+      from: location,
+      to: selectedPin.coordinate,
+      isPremium,
+    });
+
+    // Mark that route was requested (prevents clearing on modal close)
+    routeRequestedRef.current = true;
+
+    // Close modal so user can see the route
+    setModalVisible(false);
+
+    try {
+      // Fetch route (hook will handle caching and errors)
+      // Note: State updates are async, so we don't check immediately
+      // The route will appear automatically when state updates via useEffect
+      await routePreview.fetchRoute(location, selectedPin.coordinate);
+    } catch (error: any) {
+      console.error('[MapScreen] Route fetch exception:', error);
+      Alert.alert(
+        'Route Error',
+        error?.message || 'Failed to load route. Please try again.'
+      );
+      routeRequestedRef.current = false;
+    }
+  };
+
+  // Handle hide route button press
+  const handleHideRoute = () => {
+    console.log('[MapScreen] Hide Route clicked');
+    routePreview.clearRoute();
+    routeRequestedRef.current = false;
+    // Close modal so user can see the map without route
+    setModalVisible(false);
+  };
+
+  // Show error alert if route fetch fails (after state updates)
+  useEffect(() => {
+    if (routePreview.error && routeRequestedRef.current) {
+      console.error('[MapScreen] Route error:', routePreview.error);
+      Alert.alert('Route Error', routePreview.error);
+      routeRequestedRef.current = false;
+    }
+  }, [routePreview.error]);
+
+  // Log successful route load (after state updates)
+  useEffect(() => {
+    if (routePreview.coordinates && routePreview.coordinates.length > 0 && routeRequestedRef.current) {
+      console.log('[MapScreen] Route loaded successfully', {
+        coordinatesCount: routePreview.coordinates.length,
+        distance: routePreview.distance,
+        duration: routePreview.duration,
+      });
+    }
+  }, [routePreview.coordinates, routePreview.distance, routePreview.duration]);
+
+  // Clear route when pin is deselected (but not when route was just requested)
+  useEffect(() => {
+    // Only clear if pin is explicitly null (deselected) and route wasn't just requested
+    if (!selectedPin && !routeRequestedRef.current) {
+      routePreview.clearRoute();
+      routeRequestedRef.current = false;
+    }
+  }, [selectedPin]);
 
   // Handle recenter to user location
   const handleRecenter = () => {
@@ -123,6 +209,57 @@ export default function MapScreen() {
       longitude: newRegion.longitude,
     });
   };
+
+  // Fit map to route bounds when route is loaded
+  useEffect(() => {
+    if (routePreview.coordinates && routePreview.coordinates.length > 0 && mapRef.current) {
+      const coordinates = routePreview.coordinates;
+      
+      // Calculate bounds
+      let minLat = coordinates[0].latitude;
+      let maxLat = coordinates[0].latitude;
+      let minLng = coordinates[0].longitude;
+      let maxLng = coordinates[0].longitude;
+
+      coordinates.forEach((coord) => {
+        minLat = Math.min(minLat, coord.latitude);
+        maxLat = Math.max(maxLat, coord.latitude);
+        minLng = Math.min(minLng, coord.longitude);
+        maxLng = Math.max(maxLng, coord.longitude);
+      });
+
+      // Include user location and pin location in bounds
+      if (location) {
+        minLat = Math.min(minLat, location.latitude);
+        maxLat = Math.max(maxLat, location.latitude);
+        minLng = Math.min(minLng, location.longitude);
+        maxLng = Math.max(maxLng, location.longitude);
+      }
+
+      if (selectedPin) {
+        minLat = Math.min(minLat, selectedPin.coordinate.latitude);
+        maxLat = Math.max(maxLat, selectedPin.coordinate.latitude);
+        minLng = Math.min(minLng, selectedPin.coordinate.longitude);
+        maxLng = Math.max(maxLng, selectedPin.coordinate.longitude);
+      }
+
+      // Add padding
+      const latDelta = (maxLat - minLat) * 1.5;
+      const lngDelta = (maxLng - minLng) * 1.5;
+
+      mapRef.current.fitToCoordinates(
+        [
+          ...coordinates,
+          ...(location ? [{ latitude: location.latitude, longitude: location.longitude }] : []),
+          ...(selectedPin ? [selectedPin.coordinate] : []),
+        ],
+        {
+          edgePadding: { top: 100, right: 50, bottom: 100, left: 50 },
+          animated: true,
+        }
+      );
+    }
+  }, [routePreview.coordinates, location, selectedPin]);
 
   // Handle add pin button
   const handleAddPin = () => {
@@ -222,6 +359,18 @@ export default function MapScreen() {
           flipY={false}
         />
         
+        {/* Render route polyline (premium-only) */}
+        {routePreview.coordinates && routePreview.coordinates.length > 0 && (
+          <Polyline
+            coordinates={routePreview.coordinates}
+            strokeColor="#2f95dc"
+            strokeWidth={5}
+            lineCap="round"
+            lineJoin="round"
+            miterLimit={1}
+          />
+        )}
+        
         {/* Render all pins */}
         {pins.map(renderPin)}
       </ClusteredMapView>
@@ -252,6 +401,7 @@ export default function MapScreen() {
         <Ionicons name="locate" size={24} color="#fff" />
       </TouchableOpacity>
 
+
       {/* Pin Modal */}
       <PinModal
         visible={modalVisible}
@@ -259,8 +409,19 @@ export default function MapScreen() {
         userLocation={location}
         onClose={() => {
           setModalVisible(false);
-          setSelectedPin(null);
+          // Only clear pin (and route) if route was NOT requested via Show Route button
+          // If route was requested, keep the pin so route stays visible
+          if (!routeRequestedRef.current) {
+            setSelectedPin(null);
+          }
         }}
+        onShowRoute={handleShowRoute}
+        onHideRoute={handleHideRoute}
+        hasRoute={
+          routePreview.coordinates !== null &&
+          routePreview.coordinates.length > 0 &&
+          selectedPin !== null
+        }
         onNavigate={async () => {
           if (!selectedPin) return;
 
