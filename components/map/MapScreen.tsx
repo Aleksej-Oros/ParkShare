@@ -21,10 +21,12 @@ import { useMapPins, MapPin } from './useMapPins';
 import { PinMarker } from './PinMarker';
 import { PinModal } from './PinModal';
 import { ClusterMarker } from './clusterRenderer';
+import { AddressSearchModal } from './AddressSearchModal';
 import { useAuth } from '@/hooks/useAuth';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { useRoutePreview } from '@/hooks/useRoutePreview';
 import { openNavigation } from '@/utils/navigation';
+import { GeocodingResult } from '@/services/geocodingService';
 
 /**
  * OpenStreetMap Tile Provider
@@ -50,6 +52,7 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [region, setRegion] = useState<Region | null>(null);
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
   const mapRef = useRef<MapView>(null);
@@ -156,6 +159,31 @@ export default function MapScreen() {
     routeRequestedRef.current = false;
     // Close modal so user can see the map without route
     setModalVisible(false);
+  };
+
+  // Handle address search selection
+  const handleAddressSelect = (result: GeocodingResult) => {
+    console.log('[MapScreen] Address selected:', result);
+
+    if (!mapRef.current) {
+      return;
+    }
+
+    // Animate map to selected location
+    const newRegion: Region = {
+      latitude: result.latitude,
+      longitude: result.longitude,
+      latitudeDelta: 0.01, // Street-level zoom
+      longitudeDelta: 0.01,
+    };
+
+    mapRef.current.animateToRegion(newRegion, 1000);
+
+    // Update map center state (this will trigger pin reload)
+    setMapCenter({
+      latitude: result.latitude,
+      longitude: result.longitude,
+    });
   };
 
   // Show error alert if route fetch fails (after state updates)
@@ -392,6 +420,15 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Floating Search Button */}
+      <TouchableOpacity
+        style={[styles.floatingButton, styles.searchButton]}
+        onPress={() => setSearchModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="search" size={24} color="#fff" />
+      </TouchableOpacity>
+
       {/* Floating Recenter Button */}
       <TouchableOpacity
         style={[styles.floatingButton, styles.recenterButton]}
@@ -400,6 +437,13 @@ export default function MapScreen() {
       >
         <Ionicons name="locate" size={24} color="#fff" />
       </TouchableOpacity>
+
+      {/* Address Search Modal */}
+      <AddressSearchModal
+        visible={searchModalVisible}
+        onClose={() => setSearchModalVisible(false)}
+        onSelect={handleAddressSelect}
+      />
 
 
       {/* Pin Modal */}
@@ -493,6 +537,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  searchButton: {
+    top: 20,
+    left: 20,
+    backgroundColor: '#2f95dc',
   },
   recenterButton: {
     bottom: 20,
