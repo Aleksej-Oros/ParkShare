@@ -26,6 +26,20 @@ export interface MapPin {
 }
 
 const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
+const PIN_EXPIRY_CHECK_MS = 15000; // 15 seconds
+
+const EXPIRED_STATUSES: ParkingStatus[] = [
+  'walk_in_expired',
+  'leaving_soon_expired',
+  'expired',
+];
+
+const isActivePin = (pin: Pick<MapPin, 'expiresAt' | 'status'>, now: number) => {
+  if (typeof pin.expiresAt !== 'number' || pin.expiresAt <= now) {
+    return false;
+  }
+  return !EXPIRED_STATUSES.includes(pin.status);
+};
 
 export function useMapPins(
   center: { latitude: number; longitude: number } | null,
@@ -36,6 +50,7 @@ export function useMapPins(
   const [error, setError] = useState<string | null>(null);
 
   const timeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+  const expiryIntervalRef = useRef<null | ReturnType<typeof setInterval>>(null);
 
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile(user?.uid || null);
@@ -53,15 +68,7 @@ export function useMapPins(
       const now = Date.now();
 
       // 1️⃣ Filter expired pins FIRST (no expired pin should ever render)
-      const activeSpots = spots.filter((spot) => {
-        if (typeof spot.expiresAt !== 'number' || spot.expiresAt <= now) {
-          return false;
-        }
-        if (['walk_in_expired', 'leaving_soon_expired', 'expired'].includes(spot.status)) {
-          return false;
-        }
-        return true;
-      });
+      const activeSpots = spots.filter((spot) => isActivePin(spot, now));
 
       // 2️⃣ Transform to MapPin
       const mapPins: MapPin[] = activeSpots.map((spot) => ({
@@ -123,6 +130,10 @@ export function useMapPins(
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      if (expiryIntervalRef.current) {
+        clearInterval(expiryIntervalRef.current);
+        expiryIntervalRef.current = null;
+      }
       unsubscribe();
     };
   }, [
@@ -133,6 +144,28 @@ export function useMapPins(
     profile?.isPremium,
     user?.uid,
   ]);
+
+  useEffect(() => {
+    if (!center) {
+      return;
+    }
+
+    if (expiryIntervalRef.current) {
+      clearInterval(expiryIntervalRef.current);
+    }
+
+    expiryIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      setPins((prevPins) => prevPins.filter((pin) => isActivePin(pin, now)));
+    }, PIN_EXPIRY_CHECK_MS);
+
+    return () => {
+      if (expiryIntervalRef.current) {
+        clearInterval(expiryIntervalRef.current);
+        expiryIntervalRef.current = null;
+      }
+    };
+  }, [center?.latitude, center?.longitude]);
 
   return { pins, loading, error };
 }

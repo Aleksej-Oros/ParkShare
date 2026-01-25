@@ -55,7 +55,11 @@ function getPinColor(pin: MapPin): string {
  */
 export function PinMarker({ pin, onPress }: PinMarkerProps) {
   const pinColor = getPinColor(pin);
-  const isExpired = isExpiredStatus(pin.status);
+  const isExpired = isExpiredStatus(pin.status) || pin.expiresAt <= Date.now();
+
+  if (isExpired) {
+    return null;
+  }
 
   return (
     <Marker
