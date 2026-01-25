@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text } from '@/components/Themed';
-import { isValidBrand, isValidModelForBrand, getAllBrands, getModelsForBrand } from '@/utils/vehicleData';
 
 export default function VehicleScreen() {
   const params = useLocalSearchParams<{ username: string }>();
@@ -22,21 +21,16 @@ export default function VehicleScreen() {
   const [color, setColor] = useState('');
   const [errors, setErrors] = useState<{ brand?: string; model?: string; color?: string }>({});
   const [loading, setLoading] = useState(false);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   const validate = () => {
     const newErrors: { brand?: string; model?: string; color?: string } = {};
     
     if (!brand.trim()) {
       newErrors.brand = 'Vehicle brand is required';
-    } else if (!isValidBrand(brand)) {
-      newErrors.brand = 'Please select a valid vehicle brand';
     }
     
     if (!model.trim()) {
       newErrors.model = 'Vehicle model is required';
-    } else if (brand.trim() && !isValidModelForBrand(brand, model)) {
-      newErrors.model = `"${model}" is not a valid model for ${brand}. Please select from available models.`;
     }
     
     if (!color.trim()) {
@@ -85,16 +79,6 @@ export default function VehicleScreen() {
               value={brand}
               onChangeText={(text) => {
                 setBrand(text);
-                // Update available models when brand changes
-                if (text.trim() && isValidBrand(text)) {
-                  setAvailableModels(getModelsForBrand(text));
-                } else {
-                  setAvailableModels([]);
-                }
-                // Clear model if brand changes
-                if (model) {
-                  setModel('');
-                }
                 if (errors.brand) {
                   setErrors({ ...errors, brand: undefined });
                 }
@@ -109,9 +93,7 @@ export default function VehicleScreen() {
             <Text style={styles.label}>Model *</Text>
             <TextInput
               style={[styles.input, errors.model ? styles.inputError : null]}
-              placeholder={brand.trim() && isValidBrand(brand) 
-                ? `e.g., ${availableModels.slice(0, 3).join(', ')}` 
-                : "Select brand first"}
+              placeholder="e.g., Civic, Model 3, F-150"
               placeholderTextColor="#999"
               value={model}
               onChangeText={(text) => {
@@ -121,15 +103,9 @@ export default function VehicleScreen() {
                 }
               }}
               autoCapitalize="words"
-              editable={Boolean(!loading && brand.trim() && isValidBrand(brand))}
+              editable={Boolean(!loading)}
             />
             {errors.model ? <Text style={styles.errorText}>{errors.model}</Text> : null}
-            {brand.trim() && isValidBrand(brand) && availableModels.length > 0 && (
-              <Text style={styles.hintText}>
-                Available models: {availableModels.slice(0, 5).join(', ')}
-                {availableModels.length > 5 ? ` +${availableModels.length - 5} more` : ''}
-              </Text>
-            )}
           </View>
 
           <View style={styles.inputContainer}>
