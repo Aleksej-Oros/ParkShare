@@ -28,42 +28,50 @@ export default function ConfirmScreen() {
     color: string;
   }>();
   const { user } = useAuth();
-  const { profile } = useProfile(user?.uid ?? null);
+  const { profile, isOnboarded } = useProfile(user?.uid ?? null);
   const [loading, setLoading] = useState(false);
+
+  // Watch for isOnboarded to become true and navigate
+  React.useEffect(() => {
+    if (isOnboarded && loading) {
+      setLoading(false);
+      router.replace('/');
+    }
+  }, [isOnboarded, loading]);
 
   const handleComplete = async () => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to complete onboarding');
-      // AuthGuard will handle redirect to login
       return;
     }
 
     setLoading(true);
     try {
-      // First, upsert user profile with onboarding data
-      // CRITICAL: Ensure all fields are type-safe (strings, not booleans)
       await upsertUser(user.uid, {
         displayName: String(params.username || '').trim(),
         vehicleBrand: String(params.brand || '').trim(),
         vehicleModel: String(params.model || '').trim(),
         vehicleColor: String(params.color || '').trim(),
-        // parkPoints, reliabilityScore, badges, etc. will be preserved if user exists
-        // or set to defaults if user doesn't exist (handled by upsertUser)
       });
 
-      // Then, explicitly set isOnboarded = true using updateDoc
-      // CRITICAL: Ensure isOnboarded is stored as boolean true, not string "true"
-      // Use serverTimestamp() for consistency with Firestore (Date.now() would be client time)
       const userRef = doc(firestore, 'users', user.uid);
       await updateDoc(userRef, {
-        isOnboarded: true, // Real boolean, not string
+        isOnboarded: true,
         updatedAt: serverTimestamp(),
       });
 
-      // Profile update will be detected by profile state hook and AuthGuard.
-      // No manual reloadProfile needed.
+      // Fallback: if state doesn't update in 2 seconds, navigate anyway
+      setTimeout(() => {
+        setLoading((prevLoading) => {
+          if (prevLoading) {
+            router.replace('/');
+            return false;
+          }
+          return prevLoading;
+        });
+      }, 2000);
     } catch (error: any) {
-      console.error('[ConfirmScreen] Error creating user:', error);
+      setLoading(false);
       Alert.alert(
         'Error',
         error.message || 'Failed to create your profile. Please try again.',
@@ -78,9 +86,9 @@ export default function ConfirmScreen() {
           },
         ]
       );
-    } finally {
-      setLoading(false);
     }
+    // Don't set loading to false here - let the useEffect handle navigation
+    // Loading will be cleared when navigation happens
   };
 
   return (

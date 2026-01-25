@@ -4,7 +4,9 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 import { store } from '@/store';
 import AuthGuard from '@/components/AuthGuard';
@@ -42,11 +44,13 @@ export default function RootLayout() {
   }
 
   return (
-    <Provider store={store}>
-      <AuthGuard>
-        <RootLayoutNav />
-      </AuthGuard>
-    </Provider>
+    <GestureHandlerRootView style={styles.root}>
+      <Provider store={store}>
+        <AuthGuard>
+          <RootLayoutNav />
+        </AuthGuard>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -55,10 +59,22 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          gestureEnabled: false,
+          fullScreenGestureEnabled: false,
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="onboarding" 
+          options={{ 
+            headerShown: false,
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+          }} 
+        />
 
         <Stack.Screen
           name="map/add"
@@ -75,3 +91,8 @@ function RootLayoutNav() {
   );
 }
 
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

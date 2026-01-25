@@ -26,6 +26,7 @@ export default function UsernameScreen() {
 
   // Pre-fill with email username if available
   React.useEffect(() => {
+    console.log('[UsernameScreen] Component mounted');
     if (user?.email) {
       const emailUsername = user.email.split('@')[0];
       setUsername(emailUsername);

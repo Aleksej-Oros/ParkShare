@@ -9,8 +9,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -67,10 +65,7 @@ export default function VehicleScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -169,7 +164,7 @@ export default function VehicleScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -180,10 +175,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    padding: 20,
+    paddingBottom: 32,
   },
   content: {
-    flex: 1,
-    padding: 20,
+    flexGrow: 1,
     justifyContent: 'center',
   },
   title: {

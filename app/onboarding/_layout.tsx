@@ -16,13 +16,20 @@ export default function OnboardingLayout() {
         headerTitleStyle: {
           fontWeight: '600',
         },
+        gestureEnabled: false,
+        fullScreenGestureEnabled: false,
+        gestureResponseDistance: { horizontal: 0, vertical: 0 },
+        animationEnabled: true,
       }}
     >
       <Stack.Screen
         name="index"
         options={{
           title: 'Welcome',
-          headerShown: false, // Welcome screen has custom header
+          headerShown: false,
+          gestureEnabled: false,
+          fullScreenGestureEnabled: false,
+          gestureResponseDistance: { horizontal: 0, vertical: 0 },
         }}
       />
       <Stack.Screen
