@@ -124,6 +124,12 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoIconContainer}>
+              <Ionicons name="car" size={64} color="#2f95dc" />
+            </View>
+            <Text style={styles.logoTitle}>ParkShare</Text>
+          </View>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join ParkShare today</Text>
 
@@ -296,6 +302,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     justifyContent: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoIconContainer: {
+    marginBottom: 12,
+    padding: 18,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 60,
+  },
+  logoTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2f95dc',
+    textAlign: 'center',
   },
   title: {
     fontSize: 32,

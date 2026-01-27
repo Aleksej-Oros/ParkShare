@@ -21,7 +21,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       {/* Content area - keep it separate from footer to avoid touch interception */}
       <View
-        style={[styles.content, { paddingBottom: footerPaddingBottom + 72 }]}
+        style={[styles.content, { paddingBottom: footerPaddingBottom + 24 }]}
       >
         <View style={styles.contentInner}>
           <View style={styles.iconContainer}>
