@@ -28,10 +28,17 @@ import {
 } from 'firebase/firestore';
 import { firestore } from '@/firebase';
 import { deleteField } from 'firebase/firestore';
-import { ParkingSpot, ParkingStatus, PinType } from '@/models/firestore';
+import {
+  ParkingSpot,
+  ParkingSpotReservation,
+  ParkingStatus,
+  PinType,
+  ReservationStatus,
+} from '@/models/firestore';
 import { awardPointsForVerifiedPin, awardPointsForParkingConfirmation } from '@/services/pointsService';
 
 const COLLECTION = 'parkingSpots';
+const RESERVATION_DURATION_MS = 5 * 60 * 1000;
 
 /**
  * Helper function to convert Firestore document data to ParkingSpot
@@ -41,6 +48,29 @@ const COLLECTION = 'parkingSpots';
  * @returns Properly typed ParkingSpot object
  */
 function convertToParkingSpot(docId: string, data: any): ParkingSpot {
+  const reservationRaw = data.reservation;
+  const reservation: ParkingSpotReservation | undefined = reservationRaw
+    ? {
+        status: reservationRaw.status as ReservationStatus,
+        requesterId: String(reservationRaw.requesterId || ''),
+        requestedAt: typeof reservationRaw.requestedAt === 'number'
+          ? reservationRaw.requestedAt
+          : Number(reservationRaw.requestedAt || 0),
+        approvedAt:
+          reservationRaw.approvedAt !== undefined
+            ? (typeof reservationRaw.approvedAt === 'number'
+                ? reservationRaw.approvedAt
+                : Number(reservationRaw.approvedAt || 0))
+            : undefined,
+        expiresAt:
+          reservationRaw.expiresAt !== undefined
+            ? (typeof reservationRaw.expiresAt === 'number'
+                ? reservationRaw.expiresAt
+                : Number(reservationRaw.expiresAt || 0))
+            : undefined,
+      }
+    : undefined;
+
   return {
     id: docId,
     userId: String(data.userId || ''),
@@ -63,7 +93,29 @@ function convertToParkingSpot(docId: string, data: any): ParkingSpot {
   typeof data.description === 'string' && data.description.trim() !== ''
     ? data.description
     : undefined,
+    reservation,
   };
+}
+
+function shouldExpireApprovedReservation(reservation: ParkingSpotReservation | undefined, now: number) {
+  return (
+    reservation?.status === 'approved' &&
+    typeof reservation.expiresAt === 'number' &&
+    reservation.expiresAt <= now
+  );
+}
+
+function shouldRejectPendingReservation(reservation: ParkingSpotReservation | undefined, spot: ParkingSpot, now: number) {
+  return reservation?.status === 'pending' && spot.expiresAt <= now;
+}
+
+async function expireReservationField(spotId: string, status: ReservationStatus) {
+  const spotRef = doc(firestore, COLLECTION, spotId);
+  await updateDoc(spotRef, {
+    'reservation.status': status,
+    'reservation.expiresAt': Date.now(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /**
@@ -538,6 +590,179 @@ export async function deleteParkingSpot(spotId: string, userId: string): Promise
 }
 
 /**
+ * Request a reservation for a leaving-soon spot (premium-only).
+ * Creates a pending reservation with a transaction to prevent races.
+ */
+export async function requestReservation(
+  spotId: string,
+  requesterId: string
+): Promise<void> {
+  if (!spotId || !spotId.trim()) {
+    throw new Error('Spot ID is required');
+  }
+  if (!requesterId || !requesterId.trim()) {
+    throw new Error('Requester ID is required');
+  }
+
+  const spotRef = doc(firestore, COLLECTION, spotId);
+  await runTransaction(firestore, async (trx) => {
+    const docSnap = await trx.get(spotRef);
+    if (!docSnap.exists()) throw new Error('Parking spot not found');
+    const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+    const now = Date.now();
+
+    if (spot.pinType !== 'leaving-soon') {
+      throw new Error('Only leaving-soon pins can be reserved');
+    }
+    if (spot.userId === requesterId) {
+      throw new Error('You cannot request your own pin');
+    }
+    if (spot.expiresAt <= now) {
+      throw new Error('Pin has expired');
+    }
+
+    const reservation = spot.reservation;
+    if (reservation?.status === 'approved') {
+      if (typeof reservation.expiresAt !== 'number' || reservation.expiresAt > now) {
+        throw new Error('Pin already has an approved reservation');
+      }
+    }
+    if (reservation?.status === 'pending') {
+      if (reservation.requesterId === requesterId) {
+        throw new Error('You already requested this pin');
+      }
+      throw new Error('Reservation pending for another user');
+    }
+
+    trx.update(spotRef, {
+      reservation: {
+        status: 'pending',
+        requesterId,
+        requestedAt: now,
+      },
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
+ * Approve a pending reservation (owner-only).
+ * Returns "approved" or "rejected_due_to_expired".
+ */
+export async function approveReservation(
+  spotId: string,
+  ownerId: string
+): Promise<'approved' | 'rejected_due_to_expired'> {
+  if (!spotId || !spotId.trim()) {
+    throw new Error('Spot ID is required');
+  }
+  if (!ownerId || !ownerId.trim()) {
+    throw new Error('Owner ID is required');
+  }
+
+  const spotRef = doc(firestore, COLLECTION, spotId);
+  let result: 'approved' | 'rejected_due_to_expired' = 'approved';
+
+  await runTransaction(firestore, async (trx) => {
+    const docSnap = await trx.get(spotRef);
+    if (!docSnap.exists()) throw new Error('Parking spot not found');
+    const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+    const now = Date.now();
+
+    if (spot.userId !== ownerId) {
+      throw new Error('You do not have permission to approve this reservation');
+    }
+    if (!spot.reservation || spot.reservation.status !== 'pending') {
+      throw new Error('No pending reservation to approve');
+    }
+    if (spot.expiresAt <= now) {
+      result = 'rejected_due_to_expired';
+      trx.update(spotRef, {
+        'reservation.status': 'rejected',
+        'reservation.expiresAt': now,
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
+
+    trx.update(spotRef, {
+      'reservation.status': 'approved',
+      'reservation.approvedAt': now,
+      'reservation.expiresAt': now + RESERVATION_DURATION_MS,
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return result;
+}
+
+/**
+ * Reject a pending reservation (owner-only).
+ */
+export async function rejectReservation(spotId: string, ownerId: string): Promise<void> {
+  if (!spotId || !spotId.trim()) {
+    throw new Error('Spot ID is required');
+  }
+  if (!ownerId || !ownerId.trim()) {
+    throw new Error('Owner ID is required');
+  }
+
+  const spotRef = doc(firestore, COLLECTION, spotId);
+  await runTransaction(firestore, async (trx) => {
+    const docSnap = await trx.get(spotRef);
+    if (!docSnap.exists()) throw new Error('Parking spot not found');
+    const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+    const now = Date.now();
+
+    if (spot.userId !== ownerId) {
+      throw new Error('You do not have permission to reject this reservation');
+    }
+    if (!spot.reservation || spot.reservation.status !== 'pending') {
+      throw new Error('No pending reservation to reject');
+    }
+
+    trx.update(spotRef, {
+      'reservation.status': 'rejected',
+      'reservation.expiresAt': now,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
+ * Cancel a pending reservation (requester-only).
+ */
+export async function cancelReservation(spotId: string, requesterId: string): Promise<void> {
+  if (!spotId || !spotId.trim()) {
+    throw new Error('Spot ID is required');
+  }
+  if (!requesterId || !requesterId.trim()) {
+    throw new Error('Requester ID is required');
+  }
+
+  const spotRef = doc(firestore, COLLECTION, spotId);
+  await runTransaction(firestore, async (trx) => {
+    const docSnap = await trx.get(spotRef);
+    if (!docSnap.exists()) throw new Error('Parking spot not found');
+    const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+    const now = Date.now();
+
+    if (!spot.reservation || spot.reservation.status !== 'pending') {
+      throw new Error('No pending reservation to cancel');
+    }
+    if (spot.reservation.requesterId !== requesterId) {
+      throw new Error('You do not have permission to cancel this reservation');
+    }
+
+    trx.update(spotRef, {
+      'reservation.status': 'rejected',
+      'reservation.expiresAt': now,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
  * Get parking spots created by a specific user
  * @param userId - Firebase Auth UID
  * @param includeExpired - Whether to include expired spots (default: false)
@@ -616,9 +841,20 @@ export function listenToNearbySpots(
     // Removed: location bounding box filters (moved to client-side)
   );
   return onSnapshot(q, (snapshot: QuerySnapshot) => {
+    const now = Date.now();
     const spots: ParkingSpot[] = [];
     snapshot.forEach((docSnap) => {
       const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+      if (shouldExpireApprovedReservation(spot.reservation, now)) {
+        expireReservationField(spot.id, 'expired').catch((error) => {
+          console.warn('[listenToNearbySpots] Failed to expire reservation', error);
+        });
+      }
+      if (shouldRejectPendingReservation(spot.reservation, spot, now)) {
+        expireReservationField(spot.id, 'rejected').catch((error) => {
+          console.warn('[listenToNearbySpots] Failed to reject reservation', error);
+        });
+      }
       
       // Client-side filtering: status (exclude expired statuses)
       if (['walk_in_expired', 'leaving_soon_expired', 'expired'].includes(spot.status)) {

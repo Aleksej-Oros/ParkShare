@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { listenToNearbySpots } from '@/services/parkingService';
-import { ParkingSpot, ParkingStatus } from '@/models/firestore';
+import { ParkingSpot, ParkingSpotReservation, ParkingStatus } from '@/models/firestore';
 
 export interface MapPin {
   id: string;
@@ -23,6 +23,7 @@ export interface MapPin {
   isPaid: boolean;
   createdAt?: number;
   description?: string;
+  reservation?: ParkingSpotReservation;
 }
 
 const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
@@ -85,17 +86,37 @@ export function useMapPins(
         isPaid: spot.isPaid,
         createdAt: spot.createdAt || Date.now(),
         description: spot.description,
+        reservation: spot.reservation,
       }));
+
+      const currentUserId = user?.uid;
+      const filterReservationVisibility = (pinsToFilter: MapPin[]) => {
+        const now = Date.now();
+        return pinsToFilter.filter((pin) => {
+          const reservation = pin.reservation;
+          // Approved reservations hide the pin for everyone else until the reservation expires.
+          const isApproved =
+            reservation?.status === 'approved' &&
+            typeof reservation.expiresAt === 'number' &&
+            reservation.expiresAt > now;
+          if (!isApproved) {
+            return true;
+          }
+          if (!currentUserId) {
+            return false;
+          }
+          return reservation.requesterId === currentUserId || pin.authorId === currentUserId;
+        });
+      };
 
       // 3️⃣ DO NOT apply delay until profile is loaded
       if (profileLoading) {
-        setPins(mapPins);
+        setPins(filterReservationVisibility(mapPins));
         setLoading(false);
         return;
       }
 
       const isPremium = profile?.isPremium === true;
-      const currentUserId = user?.uid;
 
       // 4️⃣ Premium users: instant pins
       if (isPremium) {
@@ -103,7 +124,7 @@ export function useMapPins(
           clearTimeout(timeoutRef.current);
           timeoutRef.current = null;
         }
-        setPins(mapPins);
+        setPins(filterReservationVisibility(mapPins));
         setLoading(false);
         return;
       }
@@ -112,7 +133,7 @@ export function useMapPins(
       const ownPins = mapPins.filter((pin) => pin.authorId === currentUserId);
       const otherPins = mapPins.filter((pin) => pin.authorId !== currentUserId);
 
-      setPins(ownPins);
+      setPins(filterReservationVisibility(ownPins));
       setLoading(false);
 
       if (timeoutRef.current) {
@@ -120,7 +141,7 @@ export function useMapPins(
       }
 
       timeoutRef.current = setTimeout(() => {
-        setPins([...ownPins, ...otherPins]);
+        setPins(filterReservationVisibility([...ownPins, ...otherPins]));
         timeoutRef.current = null;
       }, FREE_USER_PIN_DELAY_MS);
     });

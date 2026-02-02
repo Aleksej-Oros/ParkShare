@@ -5,6 +5,30 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function reservationUpdateKeys() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        'reservation',
+        'reservation.status',
+        'reservation.requesterId',
+        'reservation.requestedAt',
+        'reservation.approvedAt',
+        'reservation.expiresAt',
+        'updatedAt'
+      ]);
+    }
+
+    function spotExpiresAtMillis() {
+      return resource.data.expiresAt is number
+        ? resource.data.expiresAt
+        : resource.data.expiresAt.toMillis();
+    }
+
+    function reservationExpiresAtMillis() {
+      return resource.data.reservation.expiresAt is number
+        ? resource.data.reservation.expiresAt
+        : resource.data.reservation.expiresAt.toMillis();
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId;
@@ -15,9 +39,73 @@ service cloud.firestore {
       allow read: if isSignedIn();
 
       allow update: if isSignedIn() && (
+        // Owner can update their own spot
         request.auth.uid == resource.data.userId ||
-        // Allow other users to update only 'status' and 'expiresAt'
-        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'expiresAt'])
+
+        // Non-owner: allow status/expiry updates only
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'expiresAt']) ||
+
+        // Reservation request (pending) by requester
+        (
+          reservationUpdateKeys() &&
+          resource.data.userId != request.auth.uid &&
+          request.resource.data.reservation.requesterId == request.auth.uid &&
+          request.resource.data.reservation.status == 'pending'
+        ) ||
+
+        // Reservation request (pending) by requester (strict checks)
+        (
+          reservationUpdateKeys() &&
+          resource.data.pinType == 'leaving-soon' &&
+          resource.data.userId != request.auth.uid &&
+          request.resource.data.reservation.requesterId == request.auth.uid &&
+          request.resource.data.reservation.status == 'pending' &&
+          spotExpiresAtMillis() > request.time.toMillis() &&
+          (
+            resource.data.reservation == null ||
+            resource.data.reservation.status == 'rejected' ||
+            resource.data.reservation.status == 'expired'
+          )
+        ) ||
+
+        // Reservation cancel by requester
+        (
+          reservationUpdateKeys() &&
+          request.resource.data.reservation.status == 'rejected' &&
+          resource.data.reservation != null &&
+          resource.data.reservation.status == 'pending' &&
+          resource.data.reservation.requesterId == request.auth.uid
+        ) ||
+
+        // Reservation approve/reject by owner
+        (
+          reservationUpdateKeys() &&
+          request.auth.uid == resource.data.userId &&
+          resource.data.reservation != null &&
+          resource.data.reservation.status == 'pending' &&
+          (
+            request.resource.data.reservation.status == 'approved' ||
+            request.resource.data.reservation.status == 'rejected'
+          )
+        ) ||
+
+        // Auto-expire approved reservation (any signed-in client)
+        (
+          reservationUpdateKeys() &&
+          request.resource.data.reservation.status == 'expired' &&
+          resource.data.reservation != null &&
+          resource.data.reservation.status == 'approved' &&
+          reservationExpiresAtMillis() <= request.time.toMillis()
+        ) ||
+
+        // Auto-reject pending reservation if pin expired (any signed-in client)
+        (
+          reservationUpdateKeys() &&
+          request.resource.data.reservation.status == 'rejected' &&
+          resource.data.reservation != null &&
+          resource.data.reservation.status == 'pending' &&
+          spotExpiresAtMillis() <= request.time.toMillis()
+        )
       );
 
       allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;

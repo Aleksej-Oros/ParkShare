@@ -40,6 +40,16 @@ export type ParkingStatus =
   | 'leaving_soon_active'
   | 'leaving_soon_expired';
 
+export type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface ParkingSpotReservation {
+  status: ReservationStatus;
+  requesterId: string;
+  requestedAt: number;
+  approvedAt?: number;
+  expiresAt?: number; // approvedAt + 5 minutes
+}
+
 export interface ParkingSpot {
   id: string;
   userId: string; // author
@@ -60,6 +70,7 @@ export interface ParkingSpot {
   // Additional fields for pin creation form
   title?: string;
   description?: string;
+  reservation?: ParkingSpotReservation;
 }
 
 /**

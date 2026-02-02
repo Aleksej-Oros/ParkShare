@@ -12,13 +12,14 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { MapPin } from './useMapPins';
 import { getUserById } from '@/services/userService';
 import { User } from '@/models/firestore';
 import { useAuth } from '@/hooks/useAuth';
-import { deleteParkingSpot } from '@/services/parkingService';
+import { deleteParkingSpot, requestReservation } from '@/services/parkingService';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { UpgradeModal } from '@/components/UpgradeModal';
 
@@ -97,14 +98,26 @@ export function PinModal({
   const [deleting, setDeleting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
+  const [reservationLoading, setReservationLoading] = useState(false);
+  const [localRequestPending, setLocalRequestPending] = useState(false);
 
   // Check if current user is the owner
   const isOwner = user?.uid === pin?.authorId;
 
-  // Check if pin is expired (navigation disabled for expired pins)
-  const isExpired = pin
-    ? typeof pin.expiresAt === 'number' && pin.expiresAt <= Date.now()
-    : true;
+  const getPinExpiryTime = () => {
+    if (!pin) return 0;
+    if (
+      isReservationRequester &&
+      pin.reservation?.status === 'approved' &&
+      typeof pin.reservation.expiresAt === 'number'
+    ) {
+      return pin.reservation.expiresAt;
+    }
+    return typeof pin.expiresAt === 'number' ? pin.expiresAt : 0;
+  };
+
+  // Check if pin is expired (use reservation expiry for approved requester)
+  const isExpired = pin ? getPinExpiryTime() <= Date.now() : true;
 
   // Navigation is enabled only for premium users and non-expired pins
   const canNavigate = isPremium && !isExpired && pin !== null;
@@ -112,16 +125,65 @@ export function PinModal({
   // Route preview is enabled only for premium users and non-expired pins
   const canShowRoute = isPremium && !isExpired && pin !== null && userLocation !== null;
 
+  const reservationStatus = (() => {
+    if (!pin?.reservation) return null;
+    if (
+      pin.reservation.status === 'approved' &&
+      typeof pin.reservation.expiresAt === 'number' &&
+      pin.reservation.expiresAt <= Date.now()
+    ) {
+      return 'expired';
+    }
+    return pin.reservation.status;
+  })();
+  const isReservationRequester = pin?.reservation?.requesterId === user?.uid;
+  const isReservationApproved = reservationStatus === 'approved';
+  const isReservationPending = reservationStatus === 'pending';
+  const isReservationRejected = reservationStatus === 'rejected' || reservationStatus === 'expired';
+  const canRequestReservation =
+    isPremium &&
+    pin?.type === 'leaving-soon' &&
+    !isOwner &&
+    !isExpired &&
+    (!pin?.reservation || isReservationRejected);
+  const reservationButtonDisabled =
+    reservationLoading ||
+    localRequestPending ||
+    !isPremium ||
+    isExpired ||
+    isOwner ||
+    pin?.type !== 'leaving-soon' ||
+    isReservationApproved ||
+    (isReservationPending && !isReservationRejected);
+
+  useEffect(() => {
+    if (!pin?.id) {
+      setLocalRequestPending(false);
+      return;
+    }
+    if (
+      pin.reservation?.status !== 'pending' ||
+      pin.reservation?.requesterId !== user?.uid
+    ) {
+      setLocalRequestPending(false);
+    }
+  }, [pin?.id, pin?.reservation?.status, pin?.reservation?.requesterId, user?.uid]);
+
   // Calculate time remaining until expiration
   useEffect(() => {
-    if (!pin || !pin.expiresAt) {
+    if (!pin) {
       setTimeRemaining(null);
       return;
     }
 
     const updateTimeRemaining = () => {
       const now = Date.now();
-      const remaining = pin.expiresAt - now;
+      const expiry = getPinExpiryTime();
+      if (!expiry) {
+        setTimeRemaining(null);
+        return;
+      }
+      const remaining = expiry - now;
       setTimeRemaining(remaining > 0 ? remaining : 0);
     };
 
@@ -132,7 +194,7 @@ export function PinModal({
     const interval = setInterval(updateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [pin?.expiresAt]);
+  }, [pin?.expiresAt, pin?.reservation?.expiresAt, pin?.reservation?.status, isReservationRequester]);
 
   // Calculate distance when pin or userLocation changes
   useEffect(() => {
@@ -309,6 +371,33 @@ export function PinModal({
     }
   };
 
+  const handleRequestReservation = async () => {
+    if (!pin || !user?.uid) {
+      Alert.alert('Login Required', 'You must be logged in to request a reservation.');
+      return;
+    }
+    if (!isPremium) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+    if (!canRequestReservation) {
+      return;
+    }
+
+    setReservationLoading(true);
+    setLocalRequestPending(true);
+    try {
+      await requestReservation(pin.id, user.uid);
+      Alert.alert('Request Sent', 'Your reservation request has been sent to the pin owner.');
+    } catch (error: any) {
+      console.error('[PinModal] Error requesting reservation:', error);
+      Alert.alert('Request Failed', error.message || 'Unable to request reservation.');
+      setLocalRequestPending(false);
+    } finally {
+      setReservationLoading(false);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -324,8 +413,12 @@ export function PinModal({
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.trustHeaderSection}>
+          <ScrollView
+            style={styles.modalScrollContainer}
+            contentContainerStyle={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.trustHeaderSection}>
   {/* Trust Header - User Source, Score, Vehicle (for "leaving-soon") */}
   {loadingProfile ? (
     <View style={styles.trustRowSkeleton}>
@@ -366,9 +459,9 @@ export function PinModal({
       </Text>
     </View>
   )}
-</View>
+            </View>
 
-<View style={styles.modalBody}>
+            <View style={styles.modalBody}>
             {/* Title (if available) */}
 
             {/* Description (if non-empty) */}
@@ -406,18 +499,6 @@ export function PinModal({
               </View>
             )}
 
-            {/* User Reputation Score */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Reputation Score:</Text>
-              {loadingProfile ? (
-                <ActivityIndicator size="small" color="#2f95dc" />
-              ) : (
-                <Text style={styles.infoValue}>
-                  {authorProfile?.reliabilityScore ?? 'N/A'}
-                </Text>
-              )}
-            </View>
-
             {/* Distance */}
             {distance !== null && (
               <View style={styles.infoRow}>
@@ -435,7 +516,35 @@ export function PinModal({
                 {pin.isPaid ? 'Paid' : 'Free'}
               </Text>
             </View>
-          </View>
+
+            {!!reservationStatus && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Reservation:</Text>
+                <Text style={styles.infoValue}>
+                  {reservationStatus === 'pending'
+                    ? isReservationRequester
+                      ? 'Pending (you requested)'
+                      : 'Reservation pending'
+                    : reservationStatus === 'approved'
+                    ? isReservationRequester
+                      ? 'Approved (for you)'
+                      : 'Approved'
+                    : reservationStatus === 'rejected'
+                    ? 'Rejected'
+                    : 'Expired'}
+                </Text>
+              </View>
+            )}
+
+            {isReservationApproved && isReservationRequester && pin.reservation?.expiresAt && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Arrive within:</Text>
+                <Text style={styles.infoValue}>
+                  {formatTimeRemaining(pin.reservation.expiresAt - Date.now())}
+                </Text>
+              </View>
+            )}
+            </View>
 
           {/* Owner Controls */}
           {isOwner && (
@@ -477,23 +586,44 @@ export function PinModal({
             </TouchableOpacity>
           )}
 
-          {/* Navigate Button (premium-only) */}
-          <TouchableOpacity
-            style={[
-              styles.navigateButton,
-              (!canNavigate || isExpired) && styles.navigateButtonDisabled,
-            ]}
-            onPress={handleNavigate}
-            disabled={!canNavigate || isExpired}
-          >
-            <Text style={styles.navigateButtonText}>
-              {isExpired
-                ? 'Expired'
-                : isPremium
-                ? 'Navigate'
-                : 'Navigate (Premium)'}
-            </Text>
-          </TouchableOpacity>
+          {/* Request Reservation Button (premium-only, leaving-soon) */}
+          {pin.type === 'leaving-soon' && !isOwner && (
+            <TouchableOpacity
+              style={[
+                styles.requestReservationButton,
+                reservationButtonDisabled && styles.requestReservationButtonDisabled,
+              ]}
+              onPress={handleRequestReservation}
+              disabled={reservationButtonDisabled}
+            >
+              {reservationLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.requestReservationButtonText}>
+                  {isPremium ? 'Request Reservation' : 'Request Reservation (Premium)'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+            {/* Navigate Button (premium-only) */}
+            <TouchableOpacity
+              style={[
+                styles.navigateButton,
+                (!canNavigate || isExpired) && styles.navigateButtonDisabled,
+              ]}
+              onPress={handleNavigate}
+              disabled={!canNavigate || isExpired}
+            >
+              <Text style={styles.navigateButtonText}>
+                {isExpired
+                  ? 'Expired'
+                  : isPremium
+                  ? 'Navigate'
+                  : 'Navigate (Premium)'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </Pressable>
 
@@ -501,7 +631,7 @@ export function PinModal({
       <UpgradeModal
         visible={upgradeModalVisible}
         onClose={() => setUpgradeModalVisible(false)}
-        message="Navigation is available for Premium users only."
+        message="Premium is required to request reservations or navigate."
       />
     </Modal>
   );
@@ -552,7 +682,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -577,6 +708,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     fontWeight: 'bold',
+  },
+  modalScrollContainer: {
+    flex: 1,
+  },
+  modalScroll: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   modalBody: {
     marginBottom: 20,
@@ -610,6 +748,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff4444',
   },
   showRouteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  requestReservationButton: {
+    backgroundColor: '#6A5ACD',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  requestReservationButtonDisabled: {
+    backgroundColor: '#bdb7e6',
+  },
+  requestReservationButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
