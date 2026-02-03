@@ -44,6 +44,8 @@ export function useRoutePreview(isPremium: boolean) {
     to: null,
     result: null,
   });
+  // Prevent stale in-flight requests from restoring cleared routes
+  const requestIdRef = useRef(0);
 
   /**
    * Fetch route from user location to destination
@@ -54,8 +56,10 @@ export function useRoutePreview(isPremium: boolean) {
       from: { latitude: number; longitude: number },
       to: { latitude: number; longitude: number }
     ) => {
+      const requestId = ++requestIdRef.current;
       // Premium gate: do not make API calls for free users
       if (!isPremium) {
+        if (requestId !== requestIdRef.current) return;
         setState({
           coordinates: null,
           distance: null,
@@ -77,6 +81,7 @@ export function useRoutePreview(isPremium: boolean) {
         isNaN(to.latitude) ||
         isNaN(to.longitude)
       ) {
+        if (requestId !== requestIdRef.current) return;
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -96,6 +101,7 @@ export function useRoutePreview(isPremium: boolean) {
         Math.abs(cached.to.latitude - to.latitude) < 0.0001 &&
         Math.abs(cached.to.longitude - to.longitude) < 0.0001
       ) {
+        if (requestId !== requestIdRef.current) return;
         // Use cached route
         setState({
           coordinates: cached.result.coordinates,
@@ -108,6 +114,7 @@ export function useRoutePreview(isPremium: boolean) {
       }
 
       // Fetch new route
+      if (requestId !== requestIdRef.current) return;
       setState({
         coordinates: null,
         distance: null,
@@ -122,6 +129,7 @@ export function useRoutePreview(isPremium: boolean) {
         // Validate result has coordinates
         if (!result.coordinates || result.coordinates.length === 0) {
           console.error('[useRoutePreview] Route result has no coordinates:', result);
+          if (requestId !== requestIdRef.current) return;
           setState({
             coordinates: null,
             distance: null,
@@ -139,6 +147,7 @@ export function useRoutePreview(isPremium: boolean) {
           result,
         };
 
+        if (requestId !== requestIdRef.current) return;
         setState({
           coordinates: result.coordinates,
           distance: result.distance,
@@ -149,6 +158,7 @@ export function useRoutePreview(isPremium: boolean) {
       } catch (error: any) {
         const routeError = error as RouteError;
         console.error('[useRoutePreview] Route fetch error:', routeError);
+        if (requestId !== requestIdRef.current) return;
         setState({
           coordinates: null,
           distance: null,
@@ -165,6 +175,7 @@ export function useRoutePreview(isPremium: boolean) {
    * Clear the current route
    */
   const clearRoute = useCallback(() => {
+    requestIdRef.current += 1;
     setState({
       coordinates: null,
       distance: null,
