@@ -371,7 +371,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContent: {
-    flexGrow: 1,
     padding: 20,
   },
   header: {
@@ -396,7 +395,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   form: {
-    flex: 1,
+    flexGrow: 0,
   },
   inputContainer: {
     marginBottom: 24,

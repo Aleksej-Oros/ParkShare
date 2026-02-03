@@ -119,38 +119,49 @@ export default function EditParkingSpotScreen() {
 
     try {
       const pinType: PinType = selectedPinType;
+      const isPinTypeChanged = pinType !== spot.pinType;
+      const isLeavingSoon = pinType === 'leaving-soon';
+      const isTimeChanged =
+        isLeavingSoon && typeof spot.willLeaveIn === 'number'
+          ? willLeaveInMinutes !== spot.willLeaveIn
+          : isLeavingSoon;
 
-      let status: ParkingStatus;
-      if (pinType === 'walk-in') {
-        status = 'walk_in_pending';
-      } else {
-        status = 'leaving_soon_active';
-      }
-
-      const now = Date.now();
-      let expiresAt: number;
-      let willLeaveIn: number;
-
-      if (pinType === 'walk-in') {
-        willLeaveIn = 10;
-        expiresAt = now + willLeaveIn * 60 * 1000;
-      } else {
-        willLeaveIn = willLeaveInMinutes;
-        if (willLeaveIn < 2 || willLeaveIn > 60) {
-          throw new Error('Leaving time must be between 2 and 60 minutes');
-        }
-        expiresAt = now + willLeaveIn * 60 * 1000;
-      }
-
-      await updateParkingSpot(spotId, user.uid, {
+      const updates: {
+        description?: string;
+        pinType?: PinType;
+        status?: ParkingStatus;
+        willLeaveIn?: number;
+        expiresAt?: number;
+        isPaid?: boolean;
+      } = {
         // Always send description as a string (empty string if cleared)
         description: typeof description === 'string' ? description : '',
-        pinType,
-        status,
-        willLeaveIn,
-        expiresAt,
         isPaid,
-      });
+      };
+
+      if (isPinTypeChanged) {
+        updates.pinType = pinType;
+      }
+
+      if (isPinTypeChanged || isTimeChanged) {
+        const now = Date.now();
+        if (pinType === 'walk-in') {
+          const willLeaveIn = 10;
+          updates.willLeaveIn = willLeaveIn;
+          updates.expiresAt = now + willLeaveIn * 60 * 1000;
+          updates.status = 'walk_in_pending';
+        } else {
+          const willLeaveIn = willLeaveInMinutes;
+          if (willLeaveIn < 2 || willLeaveIn > 60) {
+            throw new Error('Leaving time must be between 2 and 60 minutes');
+          }
+          updates.willLeaveIn = willLeaveIn;
+          updates.expiresAt = now + willLeaveIn * 60 * 1000;
+          updates.status = 'leaving_soon_active';
+        }
+      }
+
+      await updateParkingSpot(spotId, user.uid, updates);
 
       Alert.alert('Success', 'Parking spot updated successfully!', [
         { text: 'OK', onPress: () => router.back() },
@@ -377,7 +388,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContent: {
-    flexGrow: 1,
     padding: 20,
   },
   header: {
@@ -402,7 +412,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   form: {
-    flex: 1,
+    flexGrow: 0,
   },
   inputContainer: {
     marginBottom: 24,

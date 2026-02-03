@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: '85%',
-    flex: 1,
+    flexShrink: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -710,11 +710,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modalScrollContainer: {
-    flex: 1,
+    flexShrink: 1,
   },
   modalScroll: {
-    flexGrow: 1,
-    paddingBottom: 24,
+    flexGrow: 0,
+    paddingBottom: 12,
   },
   modalBody: {
     marginBottom: 20,
