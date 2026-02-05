@@ -153,7 +153,7 @@ export default function ReservationsTab() {
     if (!reservation) return null;
     if (
       reservation.status === 'approved' &&
-      toMillis((reservation as any).expiresAt) <= now
+      toMillis((spot as any).expiresAt) <= now
     ) {
       return 'expired';
     }
@@ -262,8 +262,8 @@ export default function ReservationsTab() {
     return activeOutgoing.map((spot) => {
       const status = normalizeReservationStatus(spot);
       const reservation = spot.reservation;
-      const reservationExpiresAt = reservation ? toMillis((reservation as any).expiresAt) : 0;
-      const expiresIn = reservationExpiresAt > now ? reservationExpiresAt - now : 0;
+      const spotExpiresAt = toMillis((spot as any).expiresAt);
+      const expiresIn = spotExpiresAt > now ? spotExpiresAt - now : 0;
       const countdown =
         status === 'approved'
           ? `${Math.floor(expiresIn / 60000)}m ${Math.floor((expiresIn % 60000) / 1000)}s`

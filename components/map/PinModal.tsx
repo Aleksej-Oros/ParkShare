@@ -106,13 +106,6 @@ export function PinModal({
 
   const getPinExpiryTime = () => {
     if (!pin) return 0;
-    if (
-      isReservationRequester &&
-      pin.reservation?.status === 'approved' &&
-      typeof pin.reservation.expiresAt === 'number'
-    ) {
-      return pin.reservation.expiresAt;
-    }
     return typeof pin.expiresAt === 'number' ? pin.expiresAt : 0;
   };
 
@@ -485,7 +478,7 @@ export function PinModal({
             </View>
 
             {/* Expiration Countdown */}
-            {timeRemaining !== null && (
+            {timeRemaining !== null && !(isReservationApproved && isReservationRequester) && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Expires in:</Text>
                 <Text
@@ -536,11 +529,11 @@ export function PinModal({
               </View>
             )}
 
-            {isReservationApproved && isReservationRequester && pin.reservation?.expiresAt && (
+            {isReservationApproved && isReservationRequester && timeRemaining !== null && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Arrive within:</Text>
                 <Text style={styles.infoValue}>
-                  {formatTimeRemaining(pin.reservation.expiresAt - Date.now())}
+                  {formatTimeRemaining(timeRemaining)}
                 </Text>
               </View>
             )}

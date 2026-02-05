@@ -688,7 +688,8 @@ export async function approveReservation(
     trx.update(spotRef, {
       'reservation.status': 'approved',
       'reservation.approvedAt': now,
-      'reservation.expiresAt': now + RESERVATION_DURATION_MS,
+      // Match reservation window to pin expiration
+      'reservation.expiresAt': spot.expiresAt,
       updatedAt: serverTimestamp(),
     });
   });

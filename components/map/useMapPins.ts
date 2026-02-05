@@ -116,6 +116,7 @@ export function useMapPins(
         return;
       }
 
+      const visiblePins = filterReservationVisibility(mapPins);
       const isPremium = profile?.isPremium === true;
 
       // 4️⃣ Premium users: instant pins
@@ -124,16 +125,35 @@ export function useMapPins(
           clearTimeout(timeoutRef.current);
           timeoutRef.current = null;
         }
-        setPins(filterReservationVisibility(mapPins));
+        setPins(visiblePins);
         setLoading(false);
         return;
       }
 
       // 5️⃣ Free users: own pins instant, others delayed
-      const ownPins = mapPins.filter((pin) => pin.authorId === currentUserId);
-      const otherPins = mapPins.filter((pin) => pin.authorId !== currentUserId);
+      const ownPins = visiblePins.filter((pin) => pin.authorId === currentUserId);
+      const otherPins = visiblePins.filter((pin) => pin.authorId !== currentUserId);
 
-      setPins(filterReservationVisibility(ownPins));
+      setPins((prevPins) => {
+        if (prevPins.length === 0) {
+          return ownPins;
+        }
+
+        const visibleById = new Map(visiblePins.map((pin) => [pin.id, pin]));
+        const now = Date.now();
+        const retained = prevPins.filter(
+          (pin) => visibleById.has(pin.id) && isActivePin(pin, now)
+        );
+        const merged = [...retained];
+
+        ownPins.forEach((pin) => {
+          if (!merged.find((existing) => existing.id === pin.id)) {
+            merged.push(pin);
+          }
+        });
+
+        return merged;
+      });
       setLoading(false);
 
       if (timeoutRef.current) {
@@ -141,7 +161,7 @@ export function useMapPins(
       }
 
       timeoutRef.current = setTimeout(() => {
-        setPins(filterReservationVisibility([...ownPins, ...otherPins]));
+        setPins([...ownPins, ...otherPins]);
         timeoutRef.current = null;
       }, FREE_USER_PIN_DELAY_MS);
     });
