@@ -11,6 +11,11 @@ import { useProfile } from '@/hooks/useProfile.realtime';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { updateUser } from '@/services/userService';
 import { isValidBrand, isValidModelForBrand, getModelsForBrand } from '@/utils/vehicleData';
+import {
+  premiumMonthlyPrice,
+  premiumCurrency,
+  premiumBillingPeriod,
+} from '@/config/premiumConfig';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -162,6 +167,10 @@ export default function ProfileScreen() {
                 >
                   <Text style={styles.premiumButtonText}>Go Premium</Text>
                 </TouchableOpacity>
+                <Text style={styles.premiumPriceText}>
+                  {premiumMonthlyPrice} {premiumCurrency} / {premiumBillingPeriod}
+                </Text>
+                <Text style={styles.premiumNoteText}>Cancel anytime</Text>
               </>
             )}
           </View>
@@ -414,6 +423,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  premiumPriceText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  premiumNoteText: {
+    marginTop: 4,
+    fontSize: 11,
+    color: '#6b7280',
+    opacity: 0.75,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 16,
