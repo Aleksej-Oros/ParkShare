@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { View, StyleSheet, TouchableOpacity, Alert, Platform, SafeAreaView, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { View, StyleSheet, TouchableOpacity, Alert, SafeAreaView, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { Text } from '@/components/Themed';
 import ParkPointsBar from '@/components/ParkPointsBar';
 import { logout } from '@/features/auth/authSlice';
-import { RootState, AppDispatch } from '@/store';
+import { AppDispatch } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile.realtime';
+import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { updateUser } from '@/services/userService';
 import { isValidBrand, isValidModelForBrand, getModelsForBrand } from '@/utils/vehicleData';
 
@@ -14,6 +16,7 @@ export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user: authUser } = useAuth();
   const { profile } = useProfile(authUser?.uid ?? null);
+  const { isPremium, loading: premiumLoading } = usePremiumAccess();
   
   const [isEditing, setIsEditing] = useState(false);
   const [editingBrand, setEditingBrand] = useState('');
@@ -22,6 +25,8 @@ export default function ProfileScreen() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ brand?: string; model?: string; color?: string }>({});
+  const [isBenefitsExpanded, setIsBenefitsExpanded] = useState(true);
+  const hasSetBenefitsDefault = useRef(false);
   
   // Reload profile on mount to ensure fresh data
   useEffect(() => {
@@ -49,6 +54,22 @@ export default function ProfileScreen() {
   const vehicleModel = profile?.vehicleModel || '';
   const vehicleColor = profile?.vehicleColor || '';
   const parkPoints = profile?.parkPoints || 0;
+  const leavingSoonTarget = 20;
+  // TODO: replace with monthly leaving-soon share count from backend stats.
+  const leavingSoonSharedThisMonth = profile?.leavingSoonSharesThisMonth ?? 0;
+  const leavingSoonProgress = Math.min(
+    Math.max(leavingSoonSharedThisMonth, 0) / leavingSoonTarget,
+    1
+  );
+  const leavingSoonProgressPercent = Math.round(leavingSoonProgress * 100);
+  const hasRewardUnlocked = leavingSoonSharedThisMonth >= leavingSoonTarget;
+
+  useEffect(() => {
+    if (!hasSetBenefitsDefault.current && !premiumLoading) {
+      setIsBenefitsExpanded(!isPremium);
+      hasSetBenefitsDefault.current = true;
+    }
+  }, [isPremium, premiumLoading]);
 
   const handleSave = async () => {
     // Validate
@@ -117,6 +138,87 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>Profile</Text>
+
+          <View style={[styles.card, styles.premiumCard]}>
+            {premiumLoading ? (
+              <>
+                <Text style={styles.cardTitle}>Premium Status</Text>
+                <Text style={styles.cardSubtitle}>Checking your status...</Text>
+              </>
+            ) : isPremium ? (
+              <>
+                <Text style={styles.cardTitle}>Premium Driver ⭐</Text>
+                <Text style={styles.cardSubtitle}>Premium active</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.cardTitle}>Upgrade to Premium</Text>
+                <Text style={styles.cardSubtitle}>
+                  Reserve spots, navigate faster, earn rewards
+                </Text>
+                <TouchableOpacity
+                  style={styles.premiumButton}
+                  onPress={() => router.push('/modal')}
+                >
+                  <Text style={styles.premiumButtonText}>Go Premium</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Your Activity This Month</Text>
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${leavingSoonProgressPercent}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {leavingSoonSharedThisMonth} / {leavingSoonTarget} Leaving Soon spots shared
+            </Text>
+            {hasRewardUnlocked ? (
+              <Text style={styles.rewardText}>🎉 You earned 50% off next month!</Text>
+            ) : null}
+            {!isPremium && (
+              <Text style={styles.noteText}>
+                Premium users can unlock discounts through sharing.
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.collapsibleHeader}
+              onPress={() => setIsBenefitsExpanded((prev) => !prev)}
+            >
+              <Text style={styles.sectionTitle}>What you get with Premium</Text>
+              <Text style={styles.collapsibleIcon}>
+                {isBenefitsExpanded ? '-' : '+'}
+              </Text>
+            </TouchableOpacity>
+            {isBenefitsExpanded ? (
+              <View style={styles.benefitsList}>
+                <Text style={styles.benefitItem}>
+                  - Reserve parking spots before they free up
+                </Text>
+                <Text style={styles.benefitItem}>
+                  - In-app route navigation to pins
+                </Text>
+                <Text style={styles.benefitItem}>
+                  - Instant pin visibility (no delay)
+                </Text>
+                <Text style={styles.benefitItem}>
+                  - Priority access to shared spots
+                </Text>
+                <Text style={styles.benefitItem}>
+                  - Monthly rewards & discounts
+                </Text>
+              </View>
+            ) : null}
+          </View>
           
           <View style={styles.section}>
             <Text style={styles.label}>Name:</Text>
@@ -272,6 +374,97 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     color: '#2f95dc',
     textAlign: 'center',
+  },
+  card: {
+    backgroundColor: '#f8f9fb',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#e6e8f0',
+  },
+  premiumCard: {
+    backgroundColor: '#f1f7ff',
+    borderColor: '#cfe3ff',
+    shadowColor: '#2f95dc',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1d4e89',
+    marginBottom: 6,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#3b4a62',
+    marginBottom: 12,
+  },
+  premiumButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2f95dc',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  premiumButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 10,
+  },
+  progressBarTrack: {
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#e3e8f0',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#2f95dc',
+    borderRadius: 6,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 6,
+  },
+  rewardText: {
+    fontSize: 14,
+    color: '#2a7b3f',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  noteText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  collapsibleIcon: {
+    fontSize: 18,
+    color: '#2f95dc',
+    fontWeight: '700',
+  },
+  benefitsList: {
+    marginTop: 6,
+    gap: 6,
+  },
+  benefitItem: {
+    fontSize: 14,
+    color: '#333',
   },
   section: {
     marginBottom: 18,
