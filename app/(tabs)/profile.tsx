@@ -176,29 +176,6 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Your Activity This Month</Text>
-            <View style={styles.progressBarTrack}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${leavingSoonProgressPercent}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {leavingSoonSharedThisMonth} / {leavingSoonTarget} Leaving Soon spots shared
-            </Text>
-            {hasRewardUnlocked ? (
-              <Text style={styles.rewardText}>🎉 You earned 50% off next month!</Text>
-            ) : null}
-            {!isPremium && (
-              <Text style={styles.noteText}>
-                Premium users can unlock discounts through sharing.
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.card}>
             <TouchableOpacity
               style={styles.collapsibleHeader}
               onPress={() => setIsBenefitsExpanded((prev) => !prev)}
@@ -227,6 +204,29 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             ) : null}
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Your Activity This Month</Text>
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${leavingSoonProgressPercent}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {leavingSoonSharedThisMonth} / {leavingSoonTarget} Leaving Soon spots shared
+            </Text>
+            {hasRewardUnlocked ? (
+              <Text style={styles.rewardText}>🎉 You earned 50% off next month!</Text>
+            ) : null}
+            {!isPremium && (
+              <Text style={styles.noteText}>
+                Premium users can unlock discounts through sharing.
+              </Text>
+            )}
           </View>
           
           <View style={styles.section}>
