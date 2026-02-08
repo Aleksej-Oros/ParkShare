@@ -227,128 +227,133 @@ export default function ProfileScreen() {
             )}
           </View>
           
-          <View style={styles.section}>
-            <Text style={styles.label}>Name:</Text>
-            <Text style={styles.value}>{displayName}</Text>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>User</Text>
+            <View style={styles.section}>
+              <Text style={styles.label}>Name:</Text>
+              <Text style={styles.value}>{displayName}</Text>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.label}>Email:</Text>
+              <Text style={styles.value}>{email}</Text>
+            </View>
           </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.label}>Email:</Text>
-            <Text style={styles.value}>{email}</Text>
-          </View>
-          
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.label}>Vehicle:</Text>
-              {!isEditing && (
-                <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Vehicle</Text>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.label}>Details</Text>
+                {!isEditing && (
+                  <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {isEditing ? (
+                <>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Brand *</Text>
+                    <TextInput
+                      style={[styles.input, errors.brand ? styles.inputError : null]}
+                      placeholder="e.g., Toyota, Honda, BMW"
+                      placeholderTextColor="#999"
+                      value={editingBrand}
+                      onChangeText={(text) => {
+                        setEditingBrand(text);
+                        if (text.trim() && isValidBrand(text)) {
+                          setAvailableModels(getModelsForBrand(text));
+                        } else {
+                          setAvailableModels([]);
+                        }
+                        if (editingModel) {
+                          setEditingModel('');
+                        }
+                        if (errors.brand) {
+                          setErrors({ ...errors, brand: undefined });
+                        }
+                      }}
+                      autoCapitalize="words"
+                      editable={!saving}
+                    />
+                    {errors.brand ? <Text style={styles.errorText}>{errors.brand}</Text> : null}
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Model *</Text>
+                    <TextInput
+                      style={[styles.input, errors.model ? styles.inputError : null]}
+                      placeholder={editingBrand.trim() && isValidBrand(editingBrand)
+                        ? `e.g., ${availableModels.slice(0, 3).join(', ')}`
+                        : "Select brand first"}
+                      placeholderTextColor="#999"
+                      value={editingModel}
+                      onChangeText={(text) => {
+                        setEditingModel(text);
+                        if (errors.model) {
+                          setErrors({ ...errors, model: undefined });
+                        }
+                      }}
+                      autoCapitalize="words"
+                      editable={!saving && Boolean(editingBrand.trim() && isValidBrand(editingBrand))}
+                    />
+                    {errors.model ? <Text style={styles.errorText}>{errors.model}</Text> : null}
+                    {editingBrand.trim() && isValidBrand(editingBrand) && availableModels.length > 0 && (
+                      <Text style={styles.hintText}>
+                        Available: {availableModels.slice(0, 5).join(', ')}
+                        {availableModels.length > 5 ? ` +${availableModels.length - 5} more` : ''}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Color *</Text>
+                    <TextInput
+                      style={[styles.input, errors.color ? styles.inputError : null]}
+                      placeholder="e.g., Red, Blue, Black, White"
+                      placeholderTextColor="#999"
+                      value={editingColor}
+                      onChangeText={(text) => {
+                        setEditingColor(text);
+                        if (errors.color) {
+                          setErrors({ ...errors, color: undefined });
+                        }
+                      }}
+                      autoCapitalize="words"
+                      editable={!saving}
+                    />
+                    {errors.color ? <Text style={styles.errorText}>{errors.color}</Text> : null}
+                  </View>
+
+                  <View style={styles.editActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.cancelButton]}
+                      onPress={handleCancel}
+                      disabled={saving}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.saveButton, saving && styles.buttonDisabled]}
+                      onPress={handleSave}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.saveButtonText}>Save</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.value}>
+                  {(vehicleBrand && vehicleModel && vehicleColor)
+                    ? `${vehicleBrand} ${vehicleModel} (${vehicleColor})`
+                    : '-'}
+                </Text>
               )}
             </View>
-            {isEditing ? (
-              <>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Brand *</Text>
-                  <TextInput
-                    style={[styles.input, errors.brand ? styles.inputError : null]}
-                    placeholder="e.g., Toyota, Honda, BMW"
-                    placeholderTextColor="#999"
-                    value={editingBrand}
-                    onChangeText={(text) => {
-                      setEditingBrand(text);
-                      if (text.trim() && isValidBrand(text)) {
-                        setAvailableModels(getModelsForBrand(text));
-                      } else {
-                        setAvailableModels([]);
-                      }
-                      if (editingModel) {
-                        setEditingModel('');
-                      }
-                      if (errors.brand) {
-                        setErrors({ ...errors, brand: undefined });
-                      }
-                    }}
-                    autoCapitalize="words"
-                    editable={!saving}
-                  />
-                  {errors.brand ? <Text style={styles.errorText}>{errors.brand}</Text> : null}
-                </View>
-                
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Model *</Text>
-                  <TextInput
-                    style={[styles.input, errors.model ? styles.inputError : null]}
-                    placeholder={editingBrand.trim() && isValidBrand(editingBrand) 
-                      ? `e.g., ${availableModels.slice(0, 3).join(', ')}` 
-                      : "Select brand first"}
-                    placeholderTextColor="#999"
-                    value={editingModel}
-                    onChangeText={(text) => {
-                      setEditingModel(text);
-                      if (errors.model) {
-                        setErrors({ ...errors, model: undefined });
-                      }
-                    }}
-                    autoCapitalize="words"
-                    editable={!saving && Boolean(editingBrand.trim() && isValidBrand(editingBrand))}
-                  />
-                  {errors.model ? <Text style={styles.errorText}>{errors.model}</Text> : null}
-                  {editingBrand.trim() && isValidBrand(editingBrand) && availableModels.length > 0 && (
-                    <Text style={styles.hintText}>
-                      Available: {availableModels.slice(0, 5).join(', ')}
-                      {availableModels.length > 5 ? ` +${availableModels.length - 5} more` : ''}
-                    </Text>
-                  )}
-                </View>
-                
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Color *</Text>
-                  <TextInput
-                    style={[styles.input, errors.color ? styles.inputError : null]}
-                    placeholder="e.g., Red, Blue, Black, White"
-                    placeholderTextColor="#999"
-                    value={editingColor}
-                    onChangeText={(text) => {
-                      setEditingColor(text);
-                      if (errors.color) {
-                        setErrors({ ...errors, color: undefined });
-                      }
-                    }}
-                    autoCapitalize="words"
-                    editable={!saving}
-                  />
-                  {errors.color ? <Text style={styles.errorText}>{errors.color}</Text> : null}
-                </View>
-                
-                <View style={styles.editActions}>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.cancelButton]} 
-                    onPress={handleCancel}
-                    disabled={saving}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.saveButton, saving && styles.buttonDisabled]} 
-                    onPress={handleSave}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveButtonText}>Save</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <Text style={styles.value}>
-                {(vehicleBrand && vehicleModel && vehicleColor) 
-                  ? `${vehicleBrand} ${vehicleModel} (${vehicleColor})` 
-                  : '-'}
-              </Text>
-            )}
           </View>
           
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
