@@ -120,6 +120,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
       allow write: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
+
+    match /userMonthlyStats/{statsId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      // TODO: Restrict writes to Cloud Functions only.
+    }
   }
 }
 

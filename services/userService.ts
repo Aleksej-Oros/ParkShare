@@ -140,6 +140,16 @@ export async function getUserById(userId: string): Promise<User | null> {
       isPremium: typeof data.isPremium === 'boolean' ? data.isPremium : (data.isPremium === 'true' || data.isPremium === true || data.isPremium === 1),
       isActive: typeof data.isActive === 'boolean' ? data.isActive : (data.isActive !== 'false' && data.isActive !== false && data.isActive !== 0),
       isOnboarded: typeof data.isOnboarded === 'boolean' ? data.isOnboarded : (data.isOnboarded === 'true' || data.isOnboarded === true || data.isOnboarded === 1),
+      rewardEligibleNextMonth:
+        typeof data.rewardEligibleNextMonth === 'boolean'
+          ? data.rewardEligibleNextMonth
+          : (data.rewardEligibleNextMonth === 'true' ||
+              data.rewardEligibleNextMonth === true ||
+              data.rewardEligibleNextMonth === 1),
+      leavingSoonSharesThisMonth:
+        typeof data.leavingSoonSharesThisMonth === 'number'
+          ? data.leavingSoonSharesThisMonth
+          : Number(data.leavingSoonSharesThisMonth || 0),
     };
   } catch (error: any) {
     throw new Error(error.message || 'Failed to fetch user');
@@ -377,6 +387,17 @@ export async function updateUser(
     if (updates.isOnboarded !== undefined) {
       // CRITICAL: Ensure boolean is stored as boolean, not string
       updateData.isOnboarded = typeof updates.isOnboarded === 'boolean' ? updates.isOnboarded : (updates.isOnboarded === 'true' || updates.isOnboarded === true || updates.isOnboarded === 1);
+    }
+    if (updates.rewardEligibleNextMonth !== undefined) {
+      updateData.rewardEligibleNextMonth =
+        typeof updates.rewardEligibleNextMonth === 'boolean'
+          ? updates.rewardEligibleNextMonth
+          : (updates.rewardEligibleNextMonth === 'true' ||
+              updates.rewardEligibleNextMonth === true ||
+              updates.rewardEligibleNextMonth === 1);
+    }
+    if (updates.leavingSoonSharesThisMonth !== undefined) {
+      updateData.leavingSoonSharesThisMonth = Number(updates.leavingSoonSharesThisMonth || 0);
     }
 
     await updateDoc(userRef, updateData);

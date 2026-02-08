@@ -12,4 +12,5 @@ export * from './subscriptionService';
 export * from './paymentService';
 export * from './pointsService';
 export * from './notificationsService';
+export * from './rewardsService';
 

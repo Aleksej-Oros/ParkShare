@@ -1,5 +1,6 @@
 // Firestore Data Models for ParkShare MVP
 // Use these TypeScript interfaces for type safety with Firestore
+import type { Timestamp } from 'firebase/firestore';
 
 /**
  * users collection
@@ -18,6 +19,8 @@ export interface User {
   isPremium: boolean;
   isActive: boolean; // for soft-deletes or disabling users
   isOnboarded: boolean; // true if user has completed onboarding
+  rewardEligibleNextMonth?: boolean;
+  leavingSoonSharesThisMonth?: number;
 
   // --- Trust Metrics Phase 2A (Optional) ---
   pinsCreated?: number;
@@ -110,3 +113,15 @@ export interface Booking {
   completedAt?: number; // Timestamp when parking was completed
 }
 
+/**
+ * userMonthlyStats collection
+ */
+export interface UserMonthlyStats {
+  userId: string;
+  yearMonth: string; // "YYYY_MM"
+  leavingSoonCount: number;
+  completedPinIds: string[];
+  rewardUnlocked: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

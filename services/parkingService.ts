@@ -36,9 +36,16 @@ import {
   ReservationStatus,
 } from '@/models/firestore';
 import { awardPointsForVerifiedPin, awardPointsForParkingConfirmation } from '@/services/pointsService';
+import { trackLeavingSoonCompletion } from '@/services/rewardsService';
 
 const COLLECTION = 'parkingSpots';
 const RESERVATION_DURATION_MS = 5 * 60 * 1000;
+const EXPIRY_GRACE_MS = 10 * 60 * 1000;
+const EXPIRED_STATUSES: ParkingStatus[] = [
+  'walk_in_expired',
+  'leaving_soon_expired',
+  'expired',
+];
 
 /**
  * Helper function to convert Firestore document data to ParkingSpot
@@ -411,9 +418,11 @@ export async function markSpotAsOccupied(spotId: string): Promise<void> {
  */
 export async function expireParkingSpot(spotId: string): Promise<void> {
   // Trust Metrics: increment pinsExpired for the pin author
+  let spotForTracking: ParkingSpot | null = null;
   try {
     const spot = await getParkingSpotById(spotId);
     if (spot && spot.userId) {
+      spotForTracking = spot;
       const { doc, updateDoc, increment } = await import('firebase/firestore');
       const userRef = doc(firestore, 'users', spot.userId);
       await updateDoc(userRef, {
@@ -425,6 +434,12 @@ export async function expireParkingSpot(spotId: string): Promise<void> {
     console.warn('[TrustMetrics] Unable to increment pinsExpired for author', e);
   }
   await updateParkingSpotStatus(spotId, 'expired');
+  if (spotForTracking) {
+    // TODO: Move this to Cloud Function for trusted expiry tracking.
+    trackLeavingSoonCompletion({ ...spotForTracking, status: 'expired' }).catch((error) => {
+      console.warn('[Rewards] Failed to track leaving-soon completion', error);
+    });
+  }
 }
 
 /**
@@ -821,6 +836,39 @@ export async function getUserParkingSpots(
 }
 
 /**
+ * Reconcile expired pins for a user.
+ * Ensures naturally expired pins are marked expired and tracked.
+ * TODO: Move to Cloud Function or scheduled backend job.
+ */
+export async function reconcileUserExpiredPins(userId: string): Promise<void> {
+  if (!userId || !userId.trim()) {
+    return;
+  }
+
+  try {
+    const spots = await getUserParkingSpots(userId, true);
+    const now = Date.now();
+
+    for (const spot of spots) {
+      if (spot.expiresAt > now) {
+        continue;
+      }
+
+      if (!EXPIRED_STATUSES.includes(spot.status)) {
+        await expireParkingSpot(spot.id);
+        continue;
+      }
+
+      // If already expired, ensure rewards tracking is caught up.
+      // TODO: Move to Cloud Function for trusted stats updates.
+      await trackLeavingSoonCompletion(spot);
+    }
+  } catch (error) {
+    console.warn('[reconcileUserExpiredPins] Failed to reconcile user pins', error);
+  }
+}
+
+/**
  * Listen to nearby spots in real-time using bounding box + client-side haversine filter.
  * @param center - {latitude, longitude}
  * @param radiusM - radius in meters
@@ -832,9 +880,10 @@ export function listenToNearbySpots(
   radiusM: number,
   onChange: (spots: ParkingSpot[]) => void
 ): Unsubscribe {
+  const expiringSpotIds = new Set<string>();
   // Only filter by expiresAt in Firestore to avoid composite index requirement
   // Location and status filtering moved to client-side
-  const now = Date.now();
+  const now = Date.now() - EXPIRY_GRACE_MS;
   const q = query(
     collection(firestore, COLLECTION),
     where('expiresAt', '>', now)
@@ -846,6 +895,19 @@ export function listenToNearbySpots(
     const spots: ParkingSpot[] = [];
     snapshot.forEach((docSnap) => {
       const spot = convertToParkingSpot(docSnap.id, docSnap.data());
+      if (spot.expiresAt <= now && !EXPIRED_STATUSES.includes(spot.status)) {
+        if (!expiringSpotIds.has(spot.id)) {
+          expiringSpotIds.add(spot.id);
+          // TODO: Move expiration handling to Cloud Function for reliability.
+          expireParkingSpot(spot.id)
+            .catch((error) => {
+              console.warn('[listenToNearbySpots] Failed to expire spot', error);
+            })
+            .finally(() => {
+              expiringSpotIds.delete(spot.id);
+            });
+        }
+      }
       if (shouldExpireApprovedReservation(spot.reservation, now)) {
         expireReservationField(spot.id, 'expired').catch((error) => {
           console.warn('[listenToNearbySpots] Failed to expire reservation', error);
@@ -858,7 +920,7 @@ export function listenToNearbySpots(
       }
       
       // Client-side filtering: status (exclude expired statuses)
-      if (['walk_in_expired', 'leaving_soon_expired', 'expired'].includes(spot.status)) {
+      if (EXPIRED_STATUSES.includes(spot.status)) {
         return; // Skip expired spots
       }
       
