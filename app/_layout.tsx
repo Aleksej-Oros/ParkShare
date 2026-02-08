@@ -84,7 +84,10 @@ function RootLayoutNav() {
           name="map/edit"
           options={{ presentation: 'modal', headerShown: false }}
         />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
     </Stack>
 
     </ThemeProvider>
