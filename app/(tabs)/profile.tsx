@@ -136,6 +136,14 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleCancelPremium = () => {
+    // Placeholder for future subscription management.
+    Alert.alert(
+      'Manage subscription',
+      'Subscription management will be available soon. You can cancel any time from here.'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -152,6 +160,12 @@ export default function ProfileScreen() {
               <>
                 <Text style={styles.cardTitle}>Premium Driver ⭐</Text>
                 <Text style={styles.cardSubtitle}>Premium active</Text>
+                <TouchableOpacity
+                  style={styles.cancelPremiumButton}
+                  onPress={handleCancelPremium}
+                >
+                  <Text style={styles.cancelPremiumButtonText}>Cancel Premium</Text>
+                </TouchableOpacity>
               </>
             ) : (
               <>
@@ -420,6 +434,21 @@ const styles = StyleSheet.create({
   premiumButtonText: {
     color: '#fff',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  cancelPremiumButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d0d7e2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  cancelPremiumButtonText: {
+    color: '#1f2937',
+    fontSize: 14,
     fontWeight: '600',
   },
   premiumPriceText: {
