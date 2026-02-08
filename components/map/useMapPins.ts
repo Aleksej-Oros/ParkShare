@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile } from '@/hooks/useProfile.realtime';
 import { listenToNearbySpots } from '@/services/parkingService';
 import { ParkingSpot, ParkingSpotReservation, ParkingStatus } from '@/models/firestore';
 
@@ -109,14 +109,19 @@ export function useMapPins(
         });
       };
 
-      // 3️⃣ DO NOT apply delay until profile is loaded
+      const visiblePins = filterReservationVisibility(mapPins);
+      const ownPins = visiblePins.filter((pin) => pin.authorId === currentUserId);
+
+      // 3️⃣ Avoid revealing other users' pins before premium status is known
       if (profileLoading) {
-        setPins(filterReservationVisibility(mapPins));
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setPins(ownPins);
         setLoading(false);
         return;
       }
-
-      const visiblePins = filterReservationVisibility(mapPins);
       const isPremium = profile?.isPremium === true;
 
       // 4️⃣ Premium users: instant pins
@@ -131,7 +136,6 @@ export function useMapPins(
       }
 
       // 5️⃣ Free users: own pins instant, others delayed
-      const ownPins = visiblePins.filter((pin) => pin.authorId === currentUserId);
       const otherPins = visiblePins.filter((pin) => pin.authorId !== currentUserId);
 
       setPins((prevPins) => {
