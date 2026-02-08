@@ -412,7 +412,7 @@ export function PinModal({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.trustHeaderSection}>
-  {/* Trust Header - User Source, Score, Vehicle (for "leaving-soon") */}
+  {/* Trust Header - User Source, Vehicle (for "leaving-soon") */}
   {loadingProfile ? (
     <View style={styles.trustRowSkeleton}>
       <ActivityIndicator size="small" color="#2f95dc" />
@@ -429,14 +429,6 @@ export function PinModal({
       <Text style={styles.trustLabel}>Source:</Text>
       <Text style={styles.trustValue}>
         {authorProfile.displayName?.trim() || 'Anonymous'}
-      </Text>
-    </View>
-  )}
-  {authorProfile && (
-    <View style={styles.trustRow}>
-      <Text style={styles.trustLabel}>Trust score:</Text>
-      <Text style={styles.trustValue}>
-        {typeof authorProfile.reliabilityScore === 'number' ? `${authorProfile.reliabilityScore} / 100` : 'N/A'}
       </Text>
     </View>
   )}
