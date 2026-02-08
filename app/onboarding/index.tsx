@@ -21,7 +21,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       {/* Content area - keep it separate from footer to avoid touch interception */}
       <View
-        style={[styles.content, { paddingBottom: footerPaddingBottom + 24 }]}
+        style={[styles.content, { paddingBottom: footerPaddingBottom + 8 }]}
       >
         <View style={styles.contentInner}>
           <View style={styles.iconContainer}>
@@ -37,7 +37,9 @@ export default function WelcomeScreen() {
           <View style={styles.features}>
             <Feature icon="map" text="Find nearby parking spots" />
             <Feature icon="share" text="Share spots with others" />
-            <Feature icon="trophy" text="Earn Park Points" />
+            <Feature icon="bookmark" text="Reserve your spot ahead of time" />
+            <Feature icon="pricetag" text="Earn discounts by sharing" />
+            <Feature icon="navigate" text="Navigate to available parking" />
           </View>
         </View>
       </View>
@@ -79,7 +81,7 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 32,
   },

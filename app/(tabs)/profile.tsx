@@ -3,7 +3,6 @@ import { useDispatch } from 'react-redux';
 import { View, StyleSheet, TouchableOpacity, Alert, SafeAreaView, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Text } from '@/components/Themed';
-import ParkPointsBar from '@/components/ParkPointsBar';
 import { logout } from '@/features/auth/authSlice';
 import { AppDispatch } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,7 +57,6 @@ export default function ProfileScreen() {
   const vehicleBrand = profile?.vehicleBrand || '';
   const vehicleModel = profile?.vehicleModel || '';
   const vehicleColor = profile?.vehicleColor || '';
-  const parkPoints = profile?.parkPoints || 0;
   const leavingSoonTarget = 20;
   // TODO: replace with monthly leaving-soon share count from backend stats.
   const leavingSoonSharedThisMonth = profile?.leavingSoonSharesThisMonth ?? 0;
@@ -351,11 +349,6 @@ export default function ProfileScreen() {
                   : '-'}
               </Text>
             )}
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.label}>ParkPoints:</Text>
-            <ParkPointsBar points={parkPoints} maxPoints={100} />
           </View>
           
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
