@@ -199,21 +199,26 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             {isBenefitsExpanded ? (
               <View style={styles.benefitsList}>
-                <Text style={styles.benefitItem}>
-                  - Reserve parking spots before they free up
-                </Text>
-                <Text style={styles.benefitItem}>
-                  - In-app route navigation to pins
-                </Text>
-                <Text style={styles.benefitItem}>
-                  - Instant pin visibility (no delay)
-                </Text>
-                <Text style={styles.benefitItem}>
-                  - Priority access to shared spots
-                </Text>
-                <Text style={styles.benefitItem}>
-                  - Monthly rewards & discounts
-                </Text>
+                <View style={styles.listItemRow}>
+                  <View style={styles.listDot} />
+                  <Text style={styles.listText}>Reserve parking spots before they free up</Text>
+                </View>
+                <View style={styles.listItemRow}>
+                  <View style={styles.listDot} />
+                  <Text style={styles.listText}>In-app route navigation to pins</Text>
+                </View>
+                <View style={styles.listItemRow}>
+                  <View style={styles.listDot} />
+                  <Text style={styles.listText}>Instant pin visibility (no delay)</Text>
+                </View>
+                <View style={styles.listItemRow}>
+                  <View style={styles.listDot} />
+                  <Text style={styles.listText}>Priority access to shared spots</Text>
+                </View>
+                <View style={styles.listItemRow}>
+                  <View style={styles.listDot} />
+                  <Text style={styles.listText}>Monthly rewards & discounts</Text>
+                </View>
               </View>
             ) : null}
           </View>
@@ -386,32 +391,27 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 28,
+    padding: 24,
     justifyContent: 'flex-start',
   },
   title: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#2f95dc',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 20,
+    color: '#1d4e89',
     textAlign: 'center',
   },
   card: {
     backgroundColor: '#f8f9fb',
     borderRadius: 14,
     padding: 16,
-    marginBottom: 18,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e6e8f0',
   },
   premiumCard: {
-    backgroundColor: '#f1f7ff',
-    borderColor: '#cfe3ff',
-    shadowColor: '#2f95dc',
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    backgroundColor: '#f8fbff',
+    borderColor: '#dbeafe',
   },
   cardTitle: {
     fontSize: 18,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#3b4a62',
+    color: '#667085',
     marginBottom: 12,
   },
   premiumButton: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#222',
+    color: '#1f2937',
     marginBottom: 10,
   },
   progressBarTrack: {
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: '#333',
+    color: '#374151',
     marginBottom: 6,
   },
   rewardText: {
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 12,
-    color: '#666',
+    color: '#6b7280',
   },
   collapsibleHeader: {
     flexDirection: 'row',
@@ -509,37 +509,50 @@ const styles = StyleSheet.create({
   },
   benefitsList: {
     marginTop: 6,
-    gap: 6,
   },
-  benefitItem: {
+  listItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  listDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2f95dc',
+    marginTop: 8,
+    marginRight: 10,
+  },
+  listText: {
     fontSize: 14,
-    color: '#333',
+    color: '#374151',
+    lineHeight: 20,
+    flex: 1,
   },
   section: {
     marginBottom: 18,
   },
   label: {
-    color: '#444',
-    fontSize: 15,
-    marginBottom: 3,
+    color: '#6b7280',
+    fontSize: 13,
+    marginBottom: 4,
   },
   value: {
-    color: '#333',
-    fontSize: 17,
-    fontWeight: '500',
+    color: '#1f2937',
+    fontSize: 16,
+    fontWeight: '600',
   },
   logoutButton: {
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-    marginTop: 35,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    marginTop: 24,
     paddingVertical: 14,
     alignItems: 'center',
   },
   logoutButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
   scrollContent: {
     flexGrow: 1,
@@ -565,18 +578,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#1f2937',
     marginBottom: 8,
   },
   input: {
     height: 44,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#e5e7eb',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    color: '#333',
+    backgroundColor: '#f9fafb',
+    color: '#1f2937',
   },
   inputError: {
     borderColor: '#ff4444',
