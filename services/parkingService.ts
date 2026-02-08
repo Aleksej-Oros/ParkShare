@@ -878,7 +878,8 @@ export async function reconcileUserExpiredPins(userId: string): Promise<void> {
 export function listenToNearbySpots(
   center: { latitude: number; longitude: number },
   radiusM: number,
-  onChange: (spots: ParkingSpot[]) => void
+  onChange: (spots: ParkingSpot[]) => void,
+  currentUserId?: string | null
 ): Unsubscribe {
   const expiringSpotIds = new Set<string>();
   // Only filter by expiresAt in Firestore to avoid composite index requirement
@@ -895,7 +896,8 @@ export function listenToNearbySpots(
     const spots: ParkingSpot[] = [];
     snapshot.forEach((docSnap) => {
       const spot = convertToParkingSpot(docSnap.id, docSnap.data());
-      if (spot.expiresAt <= now && !EXPIRED_STATUSES.includes(spot.status)) {
+      const isOwner = Boolean(currentUserId && spot.userId === currentUserId);
+      if (isOwner && spot.expiresAt <= now && !EXPIRED_STATUSES.includes(spot.status)) {
         if (!expiringSpotIds.has(spot.id)) {
           expiringSpotIds.add(spot.id);
           // TODO: Move expiration handling to Cloud Function for reliability.
@@ -908,12 +910,12 @@ export function listenToNearbySpots(
             });
         }
       }
-      if (shouldExpireApprovedReservation(spot.reservation, now)) {
+      if (isOwner && shouldExpireApprovedReservation(spot.reservation, now)) {
         expireReservationField(spot.id, 'expired').catch((error) => {
           console.warn('[listenToNearbySpots] Failed to expire reservation', error);
         });
       }
-      if (shouldRejectPendingReservation(spot.reservation, spot, now)) {
+      if (isOwner && shouldRejectPendingReservation(spot.reservation, spot, now)) {
         expireReservationField(spot.id, 'rejected').catch((error) => {
           console.warn('[listenToNearbySpots] Failed to reject reservation', error);
         });

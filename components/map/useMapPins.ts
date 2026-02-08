@@ -168,7 +168,7 @@ export function useMapPins(
         setPins([...ownPins, ...otherPins]);
         timeoutRef.current = null;
       }, FREE_USER_PIN_DELAY_MS);
-    });
+    }, user?.uid);
 
     return () => {
       if (timeoutRef.current) {

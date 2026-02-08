@@ -6,7 +6,11 @@ import { ParkingSpot } from '@/models/firestore';
  * useNearbySpots subscribes to parkingSpots within a radius of a center point (lat,lng).
  * Returns { spots, loading, error }
  */
-export function useNearbySpots(center: { latitude: number; longitude: number }, radiusM: number) {
+export function useNearbySpots(
+  center: { latitude: number; longitude: number },
+  radiusM: number,
+  currentUserId?: string | null
+) {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,9 +20,9 @@ export function useNearbySpots(center: { latitude: number; longitude: number }, 
     const unsubscribe = listenToNearbySpots(center, radiusM, (data) => {
       setSpots(data);
       setLoading(false);
-    });
+    }, currentUserId);
     return () => unsubscribe();
-  }, [center.latitude, center.longitude, radiusM]);
+  }, [center.latitude, center.longitude, radiusM, currentUserId]);
 
   return { spots, loading, error };
 }
