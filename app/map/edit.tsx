@@ -14,13 +14,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from '@/components/Themed';
+import { Text, useThemeColor } from '@/components/Themed';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { getParkingSpotById, updateParkingSpot } from '@/services/parkingService';
 import { ParkingSpot, PinType, ParkingStatus } from '@/models/firestore';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 export default function EditParkingSpotScreen() {
   const { user } = useAuth();
@@ -34,6 +39,16 @@ export default function EditParkingSpotScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [spot, setSpot] = useState<ParkingSpot | null>(null);
+
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const dividerColor = useThemeColor({}, 'divider');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   const [originalValues, setOriginalValues] = useState<{
     description: string;
@@ -176,10 +191,12 @@ export default function EditParkingSpotScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2f95dc" />
-        <Text style={styles.loadingText}>Loading parking spot...</Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={tintColor} />
+          <Text style={[styles.loadingText, { color: textSecondaryColor }]}>Loading parking spot...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -192,200 +209,212 @@ export default function EditParkingSpotScreen() {
     : true;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.cancelButton}>
-            <Ionicons name="close" size={24} color="#666" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Parking Spot</Text>
-          <View style={styles.placeholder} />
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={[styles.cancelButton, { backgroundColor: dividerColor }]}>
+              <Ionicons name="close" size={24} color={textSecondaryColor} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: tintColor }]}>Edit Parking Spot</Text>
+            <View style={styles.placeholder} />
+          </View>
 
-        <View style={styles.form}>
-          {/* Description Input (optional) */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Description (optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Add optional details"
-              placeholderTextColor="#999"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-              editable={!saving}
+          <View style={styles.form}>
+            {/* Description Input (optional) */}
+            <Card>
+              <Text style={[styles.label, { color: textColor }]}>Description (optional)</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                ]}
+                placeholder="Add optional details"
+                placeholderTextColor={textSecondaryColor}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+                editable={!saving}
+              />
+            </Card>
+
+            {/* Pin Type Selection */}
+            <Card>
+              <Text style={[styles.label, { color: textColor }]}>Pin Type *</Text>
+              <View style={styles.pinTypeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.pinTypeButton,
+                    { backgroundColor: inputBackground, borderColor: inputBorder },
+                    selectedPinType === 'walk-in' && { backgroundColor: tintColor, borderColor: tintColor },
+                  ]}
+                  onPress={() => setSelectedPinType('walk-in')}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name="walk"
+                    size={24}
+                    color={selectedPinType === 'walk-in' ? '#fff' : tintColor}
+                  />
+                  <Text
+                    style={[
+                      styles.pinTypeText,
+                      { color: selectedPinType === 'walk-in' ? '#fff' : tintColor },
+                    ]}
+                  >
+                    Walk-In
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.pinTypeButton,
+                    { backgroundColor: inputBackground, borderColor: inputBorder },
+                    selectedPinType === 'leaving-soon' && { backgroundColor: errorColor, borderColor: errorColor },
+                  ]}
+                  onPress={() => setSelectedPinType('leaving-soon')}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name="time"
+                    size={24}
+                    color={selectedPinType === 'leaving-soon' ? '#fff' : errorColor}
+                  />
+                  <Text
+                    style={[
+                      styles.pinTypeText,
+                      { color: selectedPinType === 'leaving-soon' ? '#fff' : errorColor },
+                    ]}
+                  >
+                    Leaving Soon
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
+
+            {/* Leaving Soon Time Selector */}
+            {selectedPinType === 'leaving-soon' && (
+              <Card>
+                <Text style={[styles.label, { color: textColor }]}>Approximate Leaving Time *</Text>
+                <View style={styles.timeSelectorContainer}>
+                  {[5, 10, 15, 20, 30, 45, 60].map((minutes) => (
+                    <TouchableOpacity
+                      key={minutes}
+                      style={[
+                        styles.timeButton,
+                        { backgroundColor: inputBackground, borderColor: inputBorder },
+                        willLeaveInMinutes === minutes && { backgroundColor: tintColor, borderColor: tintColor },
+                      ]}
+                      onPress={() => setWillLeaveInMinutes(minutes)}
+                      disabled={saving}
+                    >
+                      <Text
+                        style={[
+                          styles.timeButtonText,
+                          { color: willLeaveInMinutes === minutes ? '#fff' : tintColor },
+                        ]}
+                      >
+                        {minutes}m
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[styles.hintText, { color: textSecondaryColor }]}>
+                  Select when you plan to leave this parking spot
+                </Text>
+              </Card>
+            )}
+
+            {/* Paid/Free Selection */}
+            <Card>
+              <Text style={[styles.label, { color: textColor }]}>Payment Type *</Text>
+              <View style={styles.paymentContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentButton,
+                    { backgroundColor: inputBackground, borderColor: inputBorder },
+                    !isPaid && { backgroundColor: tintColor, borderColor: tintColor },
+                  ]}
+                  onPress={() => setIsPaid(false)}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name="cash"
+                    size={24}
+                    color={!isPaid ? '#fff' : tintColor}
+                  />
+                  <Text
+                    style={[
+                      styles.paymentText,
+                      { color: !isPaid ? '#fff' : tintColor },
+                    ]}
+                  >
+                    Free
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.paymentButton,
+                    { backgroundColor: inputBackground, borderColor: inputBorder },
+                    isPaid && { backgroundColor: tintColor, borderColor: tintColor },
+                  ]}
+                  onPress={() => setIsPaid(true)}
+                  disabled={saving}
+                >
+                  <Ionicons
+                    name="card"
+                    size={24}
+                    color={isPaid ? '#fff' : tintColor}
+                  />
+                  <Text
+                    style={[
+                      styles.paymentText,
+                      { color: isPaid ? '#fff' : tintColor },
+                    ]}
+                  >
+                    Paid
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
+
+            {/* Submit Button */}
+            <Button
+              title="Save Changes"
+              onPress={handleSave}
+              variant="primary"
+              loading={saving}
+              disabled={!hasChanges || saving}
+              style={styles.submitButton}
             />
           </View>
-
-          {/* Pin Type Selection */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Pin Type *</Text>
-            <View style={styles.pinTypeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.pinTypeButton,
-                  selectedPinType === 'walk-in' && styles.pinTypeButtonSelected,
-                ]}
-                onPress={() => setSelectedPinType('walk-in')}
-                disabled={saving}
-              >
-                <Ionicons
-                  name="walk"
-                  size={24}
-                  color={selectedPinType === 'walk-in' ? '#fff' : '#2f95dc'}
-                />
-                <Text
-                  style={[
-                    styles.pinTypeText,
-                    selectedPinType === 'walk-in' && styles.pinTypeTextSelected,
-                  ]}
-                >
-                  Walk-In
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.pinTypeButton,
-                  selectedPinType === 'leaving-soon' && styles.pinTypeButtonSelected,
-                ]}
-                onPress={() => setSelectedPinType('leaving-soon')}
-                disabled={saving}
-              >
-                <Ionicons
-                  name="time"
-                  size={24}
-                  color={selectedPinType === 'leaving-soon' ? '#fff' : '#FF4444'}
-                />
-                <Text
-                  style={[
-                    styles.pinTypeText,
-                    selectedPinType === 'leaving-soon' && styles.pinTypeTextSelected,
-                  ]}
-                >
-                  Leaving Soon
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Leaving Soon Time Selector */}
-          {selectedPinType === 'leaving-soon' && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Approximate Leaving Time *</Text>
-              <View style={styles.timeSelectorContainer}>
-                {[5, 10, 15, 20, 30, 45, 60].map((minutes) => (
-                  <TouchableOpacity
-                    key={minutes}
-                    style={[
-                      styles.timeButton,
-                      willLeaveInMinutes === minutes && styles.timeButtonSelected,
-                    ]}
-                    onPress={() => setWillLeaveInMinutes(minutes)}
-                    disabled={saving}
-                  >
-                    <Text
-                      style={[
-                        styles.timeButtonText,
-                        willLeaveInMinutes === minutes && styles.timeButtonTextSelected,
-                      ]}
-                    >
-                      {minutes}m
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.hintText}>
-                Select when you plan to leave this parking spot
-              </Text>
-            </View>
-          )}
-
-          {/* Paid/Free Selection */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Payment Type *</Text>
-            <View style={styles.paymentContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentButton,
-                  !isPaid && styles.paymentButtonSelected,
-                ]}
-                onPress={() => setIsPaid(false)}
-                disabled={saving}
-              >
-                <Ionicons
-                  name="cash"
-                  size={24}
-                  color={!isPaid ? '#fff' : '#2f95dc'}
-                />
-                <Text
-                  style={[
-                    styles.paymentText,
-                    !isPaid && styles.paymentTextSelected,
-                  ]}
-                >
-                  Free
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentButton,
-                  isPaid && styles.paymentButtonSelected,
-                ]}
-                onPress={() => setIsPaid(true)}
-                disabled={saving}
-              >
-                <Ionicons
-                  name="card"
-                  size={24}
-                  color={isPaid ? '#fff' : '#2f95dc'}
-                />
-                <Text
-                  style={[
-                    styles.paymentText,
-                    isPaid && styles.paymentTextSelected,
-                  ]}
-                >
-                  Paid
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              (!hasChanges || saving) && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSave}
-            disabled={!hasChanges || saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     padding: 20,
@@ -395,18 +424,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 24,
-    marginTop: Platform.OS === 'ios' ? 50 : 20,
+    marginTop: Platform.OS === 'ios' ? 20 : 10,
   },
   cancelButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2f95dc',
   },
   placeholder: {
     width: 40,
@@ -414,24 +443,17 @@ const styles = StyleSheet.create({
   form: {
     flexGrow: 0,
   },
-  inputContainer: {
-    marginBottom: 24,
-  },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    color: '#333',
   },
   textArea: {
     height: 100,
@@ -447,24 +469,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 100,
     borderWidth: 2,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  pinTypeButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
-  },
   pinTypeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  pinTypeTextSelected: {
-    color: '#fff',
   },
   paymentContainer: {
     flexDirection: 'row',
@@ -475,40 +487,17 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 80,
     borderWidth: 2,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  paymentButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
-  },
   paymentText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  paymentTextSelected: {
-    color: '#fff',
   },
   submitButton: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 10,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   timeSelectorContainer: {
     flexDirection: 'row',
@@ -521,23 +510,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#ddd',
-    backgroundColor: '#f9f9f9',
-  },
-  timeButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
   },
   timeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  timeButtonTextSelected: {
-    color: '#fff',
   },
   hintText: {
-    color: '#666',
     fontSize: 12,
     marginTop: 8,
     fontStyle: 'italic',
@@ -545,6 +523,5 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     textAlign: 'center',
-    color: '#666',
   },
 });

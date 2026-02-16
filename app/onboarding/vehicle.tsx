@@ -7,12 +7,17 @@ import {
   View,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Text } from '@/components/Themed';
+import { Text, useThemeColor } from '@/components/Themed';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 export default function VehicleScreen() {
   const params = useLocalSearchParams<{ username: string }>();
@@ -21,6 +26,14 @@ export default function VehicleScreen() {
   const [color, setColor] = useState('');
   const [errors, setErrors] = useState<{ brand?: string; model?: string; color?: string }>({});
   const [loading, setLoading] = useState(false);
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   const validate = () => {
     const newErrors: { brand?: string; model?: string; color?: string } = {};
@@ -59,95 +72,110 @@ export default function VehicleScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Vehicle Information</Text>
-          <Text style={styles.subtitle}>
-            Help others identify your vehicle when you share parking spots
-          </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Text style={[styles.title, { color: tintColor }]}>Vehicle Information</Text>
+            <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
+              Help others identify your vehicle when you share parking spots
+            </Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Brand *</Text>
-            <TextInput
-              style={[styles.input, errors.brand ? styles.inputError : null]}
-              placeholder="e.g., Toyota, Honda, BMW"
-              placeholderTextColor="#999"
-              value={brand}
-              onChangeText={(text) => {
-                setBrand(text);
-                if (errors.brand) {
-                  setErrors({ ...errors, brand: undefined });
-                }
-              }}
-              autoCapitalize="words"
-              editable={Boolean(!loading)}
+            <Card style={{ borderColor: tintColor + '55' }}>
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: textColor }]}>Brand *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                    errors.brand ? { borderColor: errorColor } : null,
+                  ]}
+                  placeholder="e.g., Toyota, Honda, BMW"
+                  placeholderTextColor={textSecondaryColor}
+                  value={brand}
+                  onChangeText={(text) => {
+                    setBrand(text);
+                    if (errors.brand) {
+                      setErrors({ ...errors, brand: undefined });
+                    }
+                  }}
+                  autoCapitalize="words"
+                  editable={Boolean(!loading)}
+                />
+                {errors.brand ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.brand}</Text> : null}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: textColor }]}>Model *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                    errors.model ? { borderColor: errorColor } : null,
+                  ]}
+                  placeholder="e.g., Civic, Model 3, F-150"
+                  placeholderTextColor={textSecondaryColor}
+                  value={model}
+                  onChangeText={(text) => {
+                    setModel(text);
+                    if (errors.model) {
+                      setErrors({ ...errors, model: undefined });
+                    }
+                  }}
+                  autoCapitalize="words"
+                  editable={Boolean(!loading)}
+                />
+                {errors.model ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.model}</Text> : null}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: textColor }]}>Color *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                    errors.color ? { borderColor: errorColor } : null,
+                  ]}
+                  placeholder="e.g., Red, Blue, Black, White"
+                  placeholderTextColor={textSecondaryColor}
+                  value={color}
+                  onChangeText={(text) => {
+                    setColor(text);
+                    if (errors.color) {
+                      setErrors({ ...errors, color: undefined });
+                    }
+                  }}
+                  autoCapitalize="words"
+                  editable={Boolean(!loading)}
+                />
+                {errors.color ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.color}</Text> : null}
+              </View>
+            </Card>
+
+            <Button
+              title="Next"
+              onPress={handleNext}
+              variant="primary"
+              loading={loading}
+              disabled={loading}
+              style={styles.button}
             />
-            {errors.brand ? <Text style={styles.errorText}>{errors.brand}</Text> : null}
           </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Model *</Text>
-            <TextInput
-              style={[styles.input, errors.model ? styles.inputError : null]}
-              placeholder="e.g., Civic, Model 3, F-150"
-              placeholderTextColor="#999"
-              value={model}
-              onChangeText={(text) => {
-                setModel(text);
-                if (errors.model) {
-                  setErrors({ ...errors, model: undefined });
-                }
-              }}
-              autoCapitalize="words"
-              editable={Boolean(!loading)}
-            />
-            {errors.model ? <Text style={styles.errorText}>{errors.model}</Text> : null}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Color *</Text>
-            <TextInput
-              style={[styles.input, errors.color ? styles.inputError : null]}
-              placeholder="e.g., Red, Blue, Black, White"
-              placeholderTextColor="#999"
-              value={color}
-              onChangeText={(text) => {
-                setColor(text);
-                if (errors.color) {
-                  setErrors({ ...errors, color: undefined });
-                }
-              }}
-              autoCapitalize="words"
-              editable={Boolean(!loading)}
-            />
-            {errors.color ? <Text style={styles.errorText}>{errors.color}</Text> : null}
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleNext}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -161,58 +189,36 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2f95dc',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
   },
   input: {
-    height: 50,
+    height: 48,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  inputError: {
-    borderColor: '#ff4444',
   },
   errorText: {
-    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
   },
   button: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 4,
   },
   hintText: {
     color: '#666',

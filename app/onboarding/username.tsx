@@ -7,22 +7,31 @@ import {
   View,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { Text } from '@/components/Themed';
-import { validateEmail } from '@/utils/validation';
+import { Text, useThemeColor } from '@/components/Themed';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 export default function UsernameScreen() {
   const { user } = useAuth();
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   // Pre-fill with email username if available
   React.useEffect(() => {
@@ -65,109 +74,98 @@ export default function UsernameScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>Choose Your Username</Text>
-        <Text style={styles.subtitle}>
-          This is how other users will see you in the app
-        </Text>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <View style={styles.content}>
+          <Text style={[styles.title, { color: tintColor }]}>Choose Your Username</Text>
+          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
+            This is how other users will see you in the app
+          </Text>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, error ? styles.inputError : null]}
-            placeholder="Enter username"
-            placeholderTextColor="#999"
-            value={username}
-            onChangeText={(text) => {
-              setUsername(text);
-              setError('');
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={30}
-            editable={!loading}
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <View style={styles.inputContainer}>
+              <Text style={[styles.inputLabel, { color: textColor }]}>Username *</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                  error ? { borderColor: errorColor } : null,
+                ]}
+                placeholder="Enter username"
+                placeholderTextColor={textSecondaryColor}
+                value={username}
+                onChangeText={(text) => {
+                  setUsername(text);
+                  setError('');
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={30}
+                editable={!loading}
+              />
+              {error ? <Text style={[styles.errorText, { color: errorColor }]}>{error}</Text> : null}
+            </View>
+          </Card>
+
+          <Button
+            title="Next"
+            onPress={handleNext}
+            variant="primary"
+            loading={loading}
+            disabled={loading}
+            style={styles.button}
           />
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleNext}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Next</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 24,
     justifyContent: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2f95dc',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 4,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   input: {
-    height: 50,
+    height: 48,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  inputError: {
-    borderColor: '#ff4444',
   },
   errorText: {
-    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
   },
   button: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 8,
   },
 });
 

@@ -12,6 +12,10 @@ import {
   Pressable,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Text as ThemedText, useThemeColor } from './Themed';
+import { Button } from './Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from './useColorScheme';
 
 interface UpgradeModalProps {
   visible: boolean;
@@ -25,6 +29,13 @@ export function UpgradeModal({
   onClose,
   message = 'Navigation is available for Premium users only.',
 }: UpgradeModalProps) {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const cardBackground = useThemeColor({}, 'cardBackground');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const dividerColor = useThemeColor({}, 'divider');
+  const tintColor = Colors[colorScheme].tint;
+
   const handleUpgrade = () => {
     onClose();
     // Navigate to profile screen where users can upgrade
@@ -40,34 +51,34 @@ export function UpgradeModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+        <View style={[styles.modalContent, { backgroundColor: cardBackground }]} onStartShouldSetResponder={() => true}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Premium Feature</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
+            <ThemedText style={[styles.modalTitle, { color: tintColor }]}>Premium Feature</ThemedText>
+            <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: dividerColor }]}>
+              <ThemedText style={[styles.closeButtonText, { color: textSecondaryColor }]}>✕</ThemedText>
             </TouchableOpacity>
           </View>
 
           <View style={styles.modalBody}>
-            <Text style={styles.message}>{message}</Text>
-            <Text style={styles.subtitle}>
+            <ThemedText style={[styles.message, { color: textColor }]}>{message}</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: textSecondaryColor }]}>
               Upgrade to Premium to unlock navigation and other exclusive features.
-            </Text>
+            </ThemedText>
           </View>
 
           <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[styles.button, styles.cancelButton]}
+            <Button
+              title="Maybe Later"
               onPress={onClose}
-            >
-              <Text style={styles.cancelButtonText}>Maybe Later</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.upgradeButton]}
+              variant="secondary"
+              style={styles.modalButton}
+            />
+            <Button
+              title="Upgrade to Premium"
               onPress={handleUpgrade}
-            >
-              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-            </TouchableOpacity>
+              variant="primary"
+              style={styles.modalButton}
+            />
           </View>
         </View>
       </Pressable>
@@ -83,7 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     width: '85%',
@@ -98,19 +108,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2f95dc',
   },
   closeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#666',
     fontWeight: 'bold',
   },
   modalBody: {
@@ -118,40 +125,19 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 16,
-    color: '#333',
     marginBottom: 12,
     lineHeight: 22,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
     lineHeight: 20,
   },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  button: {
+  modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  upgradeButton: {
-    backgroundColor: '#2f95dc',
-  },
-  upgradeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

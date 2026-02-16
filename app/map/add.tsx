@@ -13,13 +13,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from '@/components/Themed';
+import { Text, useThemeColor } from '@/components/Themed';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { createParkingSpot, getUserParkingSpots } from '@/services/parkingService';
 import { PinType, ParkingStatus } from '@/models/firestore';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 export default function AddParkingSpotScreen() {
   const { user } = useAuth();
@@ -34,6 +39,16 @@ export default function AddParkingSpotScreen() {
   const [isPaid, setIsPaid] = useState<boolean>(false); // Default to Free
   const [loading, setLoading] = useState(false);
   const [checkingLeavingSoon, setCheckingLeavingSoon] = useState(false);
+
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const dividerColor = useThemeColor({}, 'divider');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   // Get coordinates from params
   const latitude = params.latitude ? parseFloat(params.latitude) : null;
@@ -141,30 +156,35 @@ export default function AddParkingSpotScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
-            <Ionicons name="close" size={24} color="#666" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Parking Spot</Text>
-          <View style={styles.placeholder} />
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleCancel} style={[styles.cancelButton, { backgroundColor: dividerColor }]}>
+              <Ionicons name="close" size={24} color={textSecondaryColor} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: tintColor }]}>Add Parking Spot</Text>
+            <View style={styles.placeholder} />
+          </View>
 
-        <View style={styles.form}>
+          <View style={styles.form}>
           {/* Description Input (optional) */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Description</Text>
+          <Card>
+            <Text style={[styles.label, { color: textColor }]}>Description</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[
+                styles.input,
+                styles.textArea,
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+              ]}
               placeholder="Describe this parking spot (optional)"
-              placeholderTextColor="#999"
+              placeholderTextColor={textSecondaryColor}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -172,17 +192,18 @@ export default function AddParkingSpotScreen() {
               maxLength={500}
               editable={!loading}
             />
-          </View>
+          </Card>
 
 
           {/* Pin Type Selection */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Pin Type *</Text>
+          <Card>
+            <Text style={[styles.label, { color: textColor }]}>Pin Type *</Text>
             <View style={styles.pinTypeContainer}>
               <TouchableOpacity
                 style={[
                   styles.pinTypeButton,
-                  selectedPinType === 'walk-in' && styles.pinTypeButtonSelected,
+                  { backgroundColor: inputBackground, borderColor: inputBorder },
+                  selectedPinType === 'walk-in' && { backgroundColor: tintColor, borderColor: tintColor },
                 ]}
                 onPress={() => setSelectedPinType('walk-in')}
                 disabled={loading}
@@ -190,12 +211,12 @@ export default function AddParkingSpotScreen() {
                 <Ionicons
                   name="walk"
                   size={24}
-                  color={selectedPinType === 'walk-in' ? '#fff' : '#2f95dc'}
+                  color={selectedPinType === 'walk-in' ? '#fff' : tintColor}
                 />
                 <Text
                   style={[
                     styles.pinTypeText,
-                    selectedPinType === 'walk-in' && styles.pinTypeTextSelected,
+                    { color: selectedPinType === 'walk-in' ? '#fff' : tintColor },
                   ]}
                 >
                   Walk-In
@@ -205,7 +226,8 @@ export default function AddParkingSpotScreen() {
               <TouchableOpacity
                 style={[
                   styles.pinTypeButton,
-                  selectedPinType === 'leaving-soon' && styles.pinTypeButtonSelected,
+                  { backgroundColor: inputBackground, borderColor: inputBorder },
+                  selectedPinType === 'leaving-soon' && { backgroundColor: errorColor, borderColor: errorColor },
                   checkingLeavingSoon && styles.pinTypeButtonDisabled,
                 ]}
                 onPress={async () => {
@@ -246,31 +268,32 @@ export default function AddParkingSpotScreen() {
                 <Ionicons
                   name="time"
                   size={24}
-                  color={selectedPinType === 'leaving-soon' ? '#fff' : '#FF4444'}
+                  color={selectedPinType === 'leaving-soon' ? '#fff' : errorColor}
                 />
                 <Text
                   style={[
                     styles.pinTypeText,
-                    selectedPinType === 'leaving-soon' && styles.pinTypeTextSelected,
+                    { color: selectedPinType === 'leaving-soon' ? '#fff' : errorColor },
                   ]}
                 >
                   Leaving Soon
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Card>
 
           {/* Leaving Soon Time Selector */}
           {selectedPinType === 'leaving-soon' && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Approximate Leaving Time *</Text>
+            <Card>
+              <Text style={[styles.label, { color: textColor }]}>Approximate Leaving Time *</Text>
               <View style={styles.timeSelectorContainer}>
                 {[5, 10, 15, 20, 30, 45, 60].map((minutes) => (
                   <TouchableOpacity
                     key={minutes}
                     style={[
                       styles.timeButton,
-                      willLeaveInMinutes === minutes && styles.timeButtonSelected,
+                      { backgroundColor: inputBackground, borderColor: inputBorder },
+                      willLeaveInMinutes === minutes && { backgroundColor: tintColor, borderColor: tintColor },
                     ]}
                     onPress={() => setWillLeaveInMinutes(minutes)}
                     disabled={loading}
@@ -278,7 +301,7 @@ export default function AddParkingSpotScreen() {
                     <Text
                       style={[
                         styles.timeButtonText,
-                        willLeaveInMinutes === minutes && styles.timeButtonTextSelected,
+                        { color: willLeaveInMinutes === minutes ? '#fff' : tintColor },
                       ]}
                     >
                       {minutes}m
@@ -286,20 +309,21 @@ export default function AddParkingSpotScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={styles.hintText}>
+              <Text style={[styles.hintText, { color: textSecondaryColor }]}>
                 Select when you plan to leave this parking spot
               </Text>
-            </View>
+            </Card>
           )}
 
           {/* Paid/Free Selection */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Payment Type *</Text>
+          <Card>
+            <Text style={[styles.label, { color: textColor }]}>Payment Type *</Text>
             <View style={styles.paymentContainer}>
               <TouchableOpacity
                 style={[
                   styles.paymentButton,
-                  !isPaid && styles.paymentButtonSelected,
+                  { backgroundColor: inputBackground, borderColor: inputBorder },
+                  !isPaid && { backgroundColor: tintColor, borderColor: tintColor },
                 ]}
                 onPress={() => setIsPaid(false)}
                 disabled={loading}
@@ -307,12 +331,12 @@ export default function AddParkingSpotScreen() {
                 <Ionicons
                   name="cash"
                   size={24}
-                  color={!isPaid ? '#fff' : '#2f95dc'}
+                  color={!isPaid ? '#fff' : tintColor}
                 />
                 <Text
                   style={[
                     styles.paymentText,
-                    !isPaid && styles.paymentTextSelected,
+                    { color: !isPaid ? '#fff' : tintColor },
                   ]}
                 >
                   Free
@@ -322,7 +346,8 @@ export default function AddParkingSpotScreen() {
               <TouchableOpacity
                 style={[
                   styles.paymentButton,
-                  isPaid && styles.paymentButtonSelected,
+                  { backgroundColor: inputBackground, borderColor: inputBorder },
+                  isPaid && { backgroundColor: tintColor, borderColor: tintColor },
                 ]}
                 onPress={() => setIsPaid(true)}
                 disabled={loading}
@@ -330,45 +355,42 @@ export default function AddParkingSpotScreen() {
                 <Ionicons
                   name="card"
                   size={24}
-                  color={isPaid ? '#fff' : '#2f95dc'}
+                  color={isPaid ? '#fff' : tintColor}
                 />
                 <Text
                   style={[
                     styles.paymentText,
-                    isPaid && styles.paymentTextSelected,
+                    { color: isPaid ? '#fff' : tintColor },
                   ]}
                 >
                   Paid
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Card>
 
           {/* Submit Button */}
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              loading && styles.submitButtonDisabled,
-            ]}
+          <Button
+            title="Create Parking Spot"
             onPress={handleSubmit}
+            variant="primary"
+            loading={loading}
             disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Create Parking Spot</Text>
-            )}
-          </TouchableOpacity>
+            style={styles.submitButton}
+          />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     padding: 20,
@@ -378,18 +400,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 24,
-    marginTop: Platform.OS === 'ios' ? 50 : 20,
+    marginTop: Platform.OS === 'ios' ? 20 : 10,
   },
   cancelButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2f95dc',
   },
   placeholder: {
     width: 40,
@@ -397,35 +419,22 @@ const styles = StyleSheet.create({
   form: {
     flexGrow: 0,
   },
-  inputContainer: {
-    marginBottom: 24,
-  },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    color: '#333',
   },
   textArea: {
     height: 100,
     paddingTop: 12,
     textAlignVertical: 'top',
-  },
-  errorText: {
-    color: '#ff4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
   },
   pinTypeContainer: {
     flexDirection: 'row',
@@ -436,24 +445,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 100,
     borderWidth: 2,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  pinTypeButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
-  },
   pinTypeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  pinTypeTextSelected: {
-    color: '#fff',
   },
   paymentContainer: {
     flexDirection: 'row',
@@ -464,43 +463,20 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 80,
     borderWidth: 2,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  paymentButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
-  },
   paymentText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  paymentTextSelected: {
-    color: '#fff',
   },
   pinTypeButtonDisabled: {
     opacity: 0.5,
   },
   submitButton: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 10,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   timeSelectorContainer: {
     flexDirection: 'row',
@@ -513,23 +489,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#ddd',
-    backgroundColor: '#f9f9f9',
-  },
-  timeButtonSelected: {
-    backgroundColor: '#2f95dc',
-    borderColor: '#2f95dc',
   },
   timeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2f95dc',
-  },
-  timeButtonTextSelected: {
-    color: '#fff',
   },
   hintText: {
-    color: '#666',
     fontSize: 12,
     marginTop: 8,
     fontStyle: 'italic',

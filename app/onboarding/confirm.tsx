@@ -6,10 +6,9 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
   Alert,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,8 +16,12 @@ import { useProfile } from '@/hooks/useProfile.realtime';
 import { updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/firebase';
 import { upsertUser } from '@/services/userService';
-import { Text } from '@/components/Themed';
+import { Text, useThemeColor } from '@/components/Themed';
 import { Ionicons } from '@expo/vector-icons';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 export default function ConfirmScreen() {
   const params = useLocalSearchParams<{
@@ -30,6 +33,12 @@ export default function ConfirmScreen() {
   const { user } = useAuth();
   const { profile, isOnboarded } = useProfile(user?.uid ?? null);
   const [loading, setLoading] = useState(false);
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const dividerColor = useThemeColor({}, 'divider');
+  const tintColor = Colors[colorScheme].tint;
 
   // Watch for isOnboarded to become true and navigate
   React.useEffect(() => {
@@ -92,64 +101,57 @@ export default function ConfirmScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
-            <Ionicons name="checkmark-circle" size={80} color="#2f95dc" />
+            <Ionicons name="checkmark-circle" size={80} color={tintColor} />
           </View>
 
-          <Text style={styles.title}>Review Your Profile</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: tintColor }]}>Review Your Profile</Text>
+          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
             Please review your information before continuing
           </Text>
 
-          <View style={styles.infoCard}>
+          <Card style={{ borderColor: tintColor + '55' }}>
             <View style={styles.infoRow}>
-              <Ionicons name="person" size={24} color="#2f95dc" />
+              <Ionicons name="person" size={24} color={tintColor} />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Username</Text>
-                <Text style={styles.infoValue}>{params.username || 'Not set'}</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Username</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>{params.username || 'Not set'}</Text>
               </View>
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
             <View style={styles.infoRow}>
-              <Ionicons name="car" size={24} color="#2f95dc" />
+              <Ionicons name="car" size={24} color={tintColor} />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Vehicle</Text>
-                <Text style={styles.infoValue}>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Vehicle</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>
                   {params.brand || 'N/A'} {params.model || ''} ({params.color || 'N/A'})
                 </Text>
               </View>
             </View>
-          </View>
+          </Card>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <Button
+            title="Complete Setup"
             onPress={handleComplete}
+            variant="primary"
+            loading={loading}
             disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.buttonText}>Complete Setup</Text>
-                <Ionicons name="checkmark" size={20} color="#fff" style={styles.buttonIcon} />
-              </>
-            )}
-          </TouchableOpacity>
+            style={styles.button}
+          />
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -166,21 +168,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2f95dc',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
-    marginBottom: 40,
-  },
-  infoCard: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
+    marginBottom: 20,
   },
   infoRow: {
     flexDirection: 'row',
@@ -192,12 +186,10 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '500',
   },
   divider: {
@@ -206,24 +198,7 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   button: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonIcon: {
-    marginLeft: 4,
+    marginTop: 8,
   },
 });
 

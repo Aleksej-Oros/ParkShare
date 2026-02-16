@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 import { View, StyleSheet, TouchableOpacity, Alert, SafeAreaView, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Text } from '@/components/Themed';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
 import { logout } from '@/features/auth/authSlice';
 import { AppDispatch } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +17,9 @@ import {
   premiumCurrency,
   premiumBillingPeriod,
 } from '@/config/premiumConfig';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
+import { useThemeColor } from '@/components/Themed';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -30,7 +35,19 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ brand?: string; model?: string; color?: string }>({});
   const [isBenefitsExpanded, setIsBenefitsExpanded] = useState(true);
+  const [activeSection, setActiveSection] = useState<'overview' | 'account'>('overview');
   const hasSetBenefitsDefault = useRef(false);
+  
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const cardBackground = useThemeColor({}, 'cardBackground');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
+  const successColor = Colors[colorScheme].success;
   
   // Reload profile on mount to ensure fresh data
   useEffect(() => {
@@ -145,138 +162,175 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={[styles.title, { color: tintColor }]}>Profile</Text>
 
-          <View style={[styles.card, styles.premiumCard]}>
+          <View style={[styles.segmentedControl, { backgroundColor: cardBackground, borderColor: tintColor + '55' }]}>
+            <TouchableOpacity
+              style={[
+                styles.segmentButton,
+                activeSection === 'overview' && { backgroundColor: tintColor + '25', borderColor: tintColor + '66' },
+              ]}
+              onPress={() => setActiveSection('overview')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.segmentButtonText, { color: activeSection === 'overview' ? tintColor : textSecondaryColor }]}>
+                Overview
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.segmentButton,
+                activeSection === 'account' && { backgroundColor: tintColor + '25', borderColor: tintColor + '66' },
+              ]}
+              onPress={() => setActiveSection('account')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.segmentButtonText, { color: activeSection === 'account' ? tintColor : textSecondaryColor }]}>
+                Account
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeSection === 'overview' && (
+            <>
+          <Card variant="premium" style={{ borderColor: tintColor + '55' }}>
             {premiumLoading ? (
               <>
-                <Text style={styles.cardTitle}>Premium Status</Text>
-                <Text style={styles.cardSubtitle}>Checking your status...</Text>
+                <Text style={[styles.cardTitle, { color: textColor }]}>Premium Status</Text>
+                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>Checking your status...</Text>
               </>
             ) : isPremium ? (
               <>
-                <Text style={styles.cardTitle}>Premium Driver ⭐</Text>
-                <Text style={styles.cardSubtitle}>Premium active</Text>
+                <Text style={[styles.cardTitle, { color: textColor }]}>Premium Driver ⭐</Text>
+                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>Premium active</Text>
                 <TouchableOpacity
-                  style={styles.cancelPremiumButton}
+                  style={[styles.cancelPremiumButton, { backgroundColor: cardBackground, borderColor: inputBorder }]}
                   onPress={handleCancelPremium}
                 >
-                  <Text style={styles.cancelPremiumButtonText}>Cancel Premium</Text>
+                  <Text style={[styles.cancelPremiumButtonText, { color: textColor }]}>Cancel Premium</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={styles.cardTitle}>Upgrade to Premium</Text>
-                <Text style={styles.cardSubtitle}>
+                <Text style={[styles.cardTitle, { color: textColor }]}>Upgrade to Premium</Text>
+                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>
                   Reserve spots, navigate faster, earn rewards
                 </Text>
                 <TouchableOpacity
-                  style={styles.premiumButton}
+                  style={[styles.premiumButton, { backgroundColor: tintColor }]}
                   onPress={() => router.push('/modal')}
                 >
                   <Text style={styles.premiumButtonText}>Go Premium</Text>
                 </TouchableOpacity>
-                <Text style={styles.premiumPriceText}>
+                <Text style={[styles.premiumPriceText, { color: textSecondaryColor }]}>
                   {premiumMonthlyPrice} {premiumCurrency} / {premiumBillingPeriod}
                 </Text>
-                <Text style={styles.premiumNoteText}>Cancel anytime</Text>
+                <Text style={[styles.premiumNoteText, { color: textSecondaryColor }]}>Cancel anytime</Text>
               </>
             )}
-          </View>
+          </Card>
 
-          <View style={styles.card}>
+          <Card style={{ borderColor: tintColor + '55' }}>
             <TouchableOpacity
               style={styles.collapsibleHeader}
               onPress={() => setIsBenefitsExpanded((prev) => !prev)}
             >
-              <Text style={styles.sectionTitle}>What you get with Premium</Text>
-              <Text style={styles.collapsibleIcon}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>What you get with Premium</Text>
+              <Text style={[styles.collapsibleIcon, { color: tintColor }]}>
                 {isBenefitsExpanded ? '-' : '+'}
               </Text>
             </TouchableOpacity>
             {isBenefitsExpanded ? (
               <View style={styles.benefitsList}>
                 <View style={styles.listItemRow}>
-                  <View style={styles.listDot} />
-                  <Text style={styles.listText}>Reserve parking spots before they free up</Text>
+                  <View style={[styles.listDot, { backgroundColor: tintColor }]} />
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Reserve parking spots before they free up</Text>
                 </View>
                 <View style={styles.listItemRow}>
-                  <View style={styles.listDot} />
-                  <Text style={styles.listText}>In-app route navigation to pins</Text>
+                  <View style={[styles.listDot, { backgroundColor: tintColor }]} />
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>In-app route navigation to pins</Text>
                 </View>
                 <View style={styles.listItemRow}>
-                  <View style={styles.listDot} />
-                  <Text style={styles.listText}>Instant pin visibility (no delay)</Text>
+                  <View style={[styles.listDot, { backgroundColor: tintColor }]} />
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Instant pin visibility (no delay)</Text>
                 </View>
                 <View style={styles.listItemRow}>
-                  <View style={styles.listDot} />
-                  <Text style={styles.listText}>Priority access to shared spots</Text>
+                  <View style={[styles.listDot, { backgroundColor: tintColor }]} />
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Priority access to shared spots</Text>
                 </View>
                 <View style={styles.listItemRow}>
-                  <View style={styles.listDot} />
-                  <Text style={styles.listText}>Monthly rewards & discounts</Text>
+                  <View style={[styles.listDot, { backgroundColor: tintColor }]} />
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Monthly rewards & discounts</Text>
                 </View>
               </View>
             ) : null}
-          </View>
+          </Card>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Your Activity This Month</Text>
-            <View style={styles.progressBarTrack}>
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Your Activity This Month</Text>
+            <View style={[styles.progressBarTrack, { backgroundColor: inputBorder }]}>
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${leavingSoonProgressPercent}%` },
+                  { width: `${leavingSoonProgressPercent}%`, backgroundColor: tintColor },
                 ]}
               />
             </View>
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, { color: textSecondaryColor }]}>
               {leavingSoonSharedThisMonth} / {leavingSoonTarget} Leaving Soon spots shared
             </Text>
             {hasRewardUnlocked ? (
-              <Text style={styles.rewardText}>🎉 You earned 50% off next month!</Text>
+              <Text style={[styles.rewardText, { color: successColor }]}>🎉 You earned 50% off next month!</Text>
             ) : null}
             {!isPremium && (
-              <Text style={styles.noteText}>
+              <Text style={[styles.noteText, { color: textSecondaryColor }]}>
                 Premium users can unlock discounts through sharing.
               </Text>
             )}
-          </View>
+          </Card>
+            </>
+          )}
           
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>User</Text>
+          {activeSection === 'account' && (
+            <>
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>User</Text>
             <View style={styles.section}>
-              <Text style={styles.label}>Name:</Text>
-              <Text style={styles.value}>{displayName}</Text>
+              <Text style={[styles.label, { color: textSecondaryColor }]}>Name:</Text>
+              <Text style={[styles.value, { color: textColor }]}>{displayName}</Text>
             </View>
             <View style={styles.section}>
-              <Text style={styles.label}>Email:</Text>
-              <Text style={styles.value}>{email}</Text>
+              <Text style={[styles.label, { color: textSecondaryColor }]}>Email:</Text>
+              <Text style={[styles.value, { color: textColor }]}>{email}</Text>
             </View>
-          </View>
+          </Card>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Vehicle</Text>
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>Vehicle</Text>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.label}>Details</Text>
+                <Text style={[styles.label, { color: textSecondaryColor }]}>Details</Text>
                 {!isEditing && (
                   <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
-                    <Text style={styles.editButtonText}>Edit</Text>
+                    <Text style={[styles.editButtonText, { color: tintColor }]}>Edit</Text>
                   </TouchableOpacity>
                 )}
               </View>
               {isEditing ? (
                 <>
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Brand *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>Brand *</Text>
                     <TextInput
-                      style={[styles.input, errors.brand ? styles.inputError : null]}
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        errors.brand ? { borderColor: errorColor } : null,
+                      ]}
                       placeholder="e.g., Toyota, Honda, BMW"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={textSecondaryColor}
                       value={editingBrand}
                       onChangeText={(text) => {
                         setEditingBrand(text);
@@ -295,17 +349,21 @@ export default function ProfileScreen() {
                       autoCapitalize="words"
                       editable={!saving}
                     />
-                    {errors.brand ? <Text style={styles.errorText}>{errors.brand}</Text> : null}
+                    {errors.brand ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.brand}</Text> : null}
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Model *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>Model *</Text>
                     <TextInput
-                      style={[styles.input, errors.model ? styles.inputError : null]}
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        errors.model ? { borderColor: errorColor } : null,
+                      ]}
                       placeholder={editingBrand.trim() && isValidBrand(editingBrand)
                         ? `e.g., ${availableModels.slice(0, 3).join(', ')}`
                         : "Select brand first"}
-                      placeholderTextColor="#999"
+                      placeholderTextColor={textSecondaryColor}
                       value={editingModel}
                       onChangeText={(text) => {
                         setEditingModel(text);
@@ -316,9 +374,9 @@ export default function ProfileScreen() {
                       autoCapitalize="words"
                       editable={!saving && Boolean(editingBrand.trim() && isValidBrand(editingBrand))}
                     />
-                    {errors.model ? <Text style={styles.errorText}>{errors.model}</Text> : null}
+                    {errors.model ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.model}</Text> : null}
                     {editingBrand.trim() && isValidBrand(editingBrand) && availableModels.length > 0 && (
-                      <Text style={styles.hintText}>
+                      <Text style={[styles.hintText, { color: textSecondaryColor }]}>
                         Available: {availableModels.slice(0, 5).join(', ')}
                         {availableModels.length > 5 ? ` +${availableModels.length - 5} more` : ''}
                       </Text>
@@ -326,11 +384,15 @@ export default function ProfileScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Color *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>Color *</Text>
                     <TextInput
-                      style={[styles.input, errors.color ? styles.inputError : null]}
+                      style={[
+                        styles.input,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        errors.color ? { borderColor: errorColor } : null,
+                      ]}
                       placeholder="e.g., Red, Blue, Black, White"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={textSecondaryColor}
                       value={editingColor}
                       onChangeText={(text) => {
                         setEditingColor(text);
@@ -341,19 +403,23 @@ export default function ProfileScreen() {
                       autoCapitalize="words"
                       editable={!saving}
                     />
-                    {errors.color ? <Text style={styles.errorText}>{errors.color}</Text> : null}
+                    {errors.color ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.color}</Text> : null}
                   </View>
 
                   <View style={styles.editActions}>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.cancelButton]}
+                      style={[styles.actionButton, { backgroundColor: inputBackground, borderWidth: 1, borderColor: inputBorder }]}
                       onPress={handleCancel}
                       disabled={saving}
                     >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                      <Text style={[styles.cancelButtonText, { color: textColor }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.saveButton, saving && styles.buttonDisabled]}
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: tintColor },
+                        saving && styles.buttonDisabled,
+                      ]}
                       onPress={handleSave}
                       disabled={saving}
                     >
@@ -366,18 +432,27 @@ export default function ProfileScreen() {
                   </View>
                 </>
               ) : (
-                <Text style={styles.value}>
+                <Text style={[styles.value, { color: textColor }]}>
                   {(vehicleBrand && vehicleModel && vehicleColor)
                     ? `${vehicleBrand} ${vehicleModel} (${vehicleColor})`
                     : '-'}
                 </Text>
               )}
             </View>
-          </View>
+          </Card>
           
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Log Out</Text>
-          </TouchableOpacity>
+          <Button
+            title="Log Out"
+            onPress={handleLogout}
+            variant="secondary"
+            textStyle={{ color: errorColor, fontWeight: '700' }}
+            style={[
+              styles.logoutButton,
+              { borderColor: errorColor + '88', backgroundColor: errorColor + '12' },
+            ]}
+          />
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -387,7 +462,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -398,35 +472,38 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 20,
-    color: '#1d4e89',
     textAlign: 'center',
   },
-  card: {
-    backgroundColor: '#f8f9fb',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+  segmentedControl: {
+    flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#e6e8f0',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
   },
-  premiumCard: {
-    backgroundColor: '#f8fbff',
-    borderColor: '#dbeafe',
+  segmentButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1d4e89',
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#667085',
     marginBottom: 12,
   },
   premiumButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#2f95dc',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
@@ -438,64 +515,56 @@ const styles = StyleSheet.create({
   },
   cancelPremiumButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d0d7e2',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
     marginTop: 6,
   },
   cancelPremiumButtonText: {
-    color: '#1f2937',
     fontSize: 14,
     fontWeight: '600',
   },
   premiumPriceText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6b7280',
     textAlign: 'center',
   },
   premiumNoteText: {
     marginTop: 4,
     fontSize: 11,
-    color: '#6b7280',
     opacity: 0.75,
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 10,
+  },
+  sectionTitleCentered: {
+    textAlign: 'center',
   },
   progressBarTrack: {
     height: 10,
     borderRadius: 6,
-    backgroundColor: '#e3e8f0',
     overflow: 'hidden',
     marginBottom: 10,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2f95dc',
     borderRadius: 6,
   },
   progressText: {
     fontSize: 14,
-    color: '#374151',
     marginBottom: 6,
   },
   rewardText: {
     fontSize: 14,
-    color: '#2a7b3f',
     fontWeight: '600',
     marginBottom: 6,
   },
   noteText: {
     fontSize: 12,
-    color: '#6b7280',
   },
   collapsibleHeader: {
     flexDirection: 'row',
@@ -504,7 +573,6 @@ const styles = StyleSheet.create({
   },
   collapsibleIcon: {
     fontSize: 18,
-    color: '#2f95dc',
     fontWeight: '700',
   },
   benefitsList: {
@@ -519,13 +587,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2f95dc',
     marginTop: 8,
     marginRight: 10,
   },
   listText: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
     flex: 1,
   },
@@ -533,26 +599,15 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   label: {
-    color: '#6b7280',
     fontSize: 13,
     marginBottom: 4,
   },
   value: {
-    color: '#1f2937',
     fontSize: 16,
     fontWeight: '600',
   },
   logoutButton: {
-    backgroundColor: '#ef4444',
-    borderRadius: 10,
     marginTop: 24,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   scrollContent: {
     flexGrow: 1,
@@ -568,7 +623,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   editButtonText: {
-    color: '#2f95dc',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -578,29 +632,20 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 8,
   },
   input: {
     height: 44,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 16,
-    backgroundColor: '#f9fafb',
-    color: '#1f2937',
-  },
-  inputError: {
-    borderColor: '#ff4444',
   },
   errorText: {
-    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
   },
   hintText: {
-    color: '#666',
     fontSize: 12,
     marginTop: 4,
     fontStyle: 'italic',
@@ -617,18 +662,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
   cancelButtonText: {
-    color: '#666',
     fontSize: 16,
     fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#2f95dc',
   },
   saveButtonText: {
     color: '#fff',

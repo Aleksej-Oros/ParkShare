@@ -22,6 +22,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { deleteParkingSpot, requestReservation } from '@/services/parkingService';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { Button } from '@/components/Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
+import { useThemeColor } from '@/components/Themed';
 
 interface PinModalProps {
   visible: boolean;
@@ -100,6 +104,16 @@ export function PinModal({
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [reservationLoading, setReservationLoading] = useState(false);
   const [localRequestPending, setLocalRequestPending] = useState(false);
+
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBackground = useThemeColor({}, 'cardBackground');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const dividerColor = useThemeColor({}, 'divider');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
+  const successColor = Colors[colorScheme].success;
 
   // Check if current user is the owner
   const isOwner = user?.uid === pin?.authorId;
@@ -399,11 +413,11 @@ export function PinModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+        <View style={[styles.modalContent, { backgroundColor: cardBackground }]} onStartShouldSetResponder={() => true}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{pinTypeLabel}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
+            <Text style={[styles.modalTitle, { color: tintColor }]}>{pinTypeLabel}</Text>
+            <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: dividerColor }]}>
+              <Text style={[styles.closeButtonText, { color: textSecondaryColor }]}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -411,23 +425,23 @@ export function PinModal({
             contentContainerStyle={styles.modalScroll}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.trustHeaderSection}>
+            <View style={[styles.trustHeaderSection, { borderBottomColor: tintColor + '40' }]}>
   {/* Trust Header - User Source, Vehicle (for "leaving-soon") */}
   {loadingProfile ? (
     <View style={styles.trustRowSkeleton}>
-      <ActivityIndicator size="small" color="#2f95dc" />
-      <Text style={styles.trustLabel}>Loading user…</Text>
+      <ActivityIndicator size="small" color={tintColor} />
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Loading user…</Text>
     </View>
   ) : !authorProfile && (
     <View style={styles.trustRowMissing}>
-      <Text style={styles.trustLabel}>Unknown user</Text>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Unknown user</Text>
     </View>
   )}
   {authorProfile && (
     <View style={styles.trustRow}>
       {/* DisplayName always for both types */}
-      <Text style={styles.trustLabel}>Source:</Text>
-      <Text style={styles.trustValue}>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Source:</Text>
+      <Text style={[styles.trustValue, { color: textColor }]}>
         {authorProfile.displayName?.trim() || 'Anonymous'}
       </Text>
     </View>
@@ -435,8 +449,8 @@ export function PinModal({
   {/* Show vehicle info for leaving-soon only and only on user fetch success */}
   {authorProfile && pin.type === 'leaving-soon' && (
     <View style={styles.trustRow}>
-      <Text style={styles.trustLabel}>Vehicle:</Text>
-      <Text style={styles.trustValue}>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Vehicle:</Text>
+      <Text style={[styles.trustValue, { color: textColor }]}>
         {/* show as one line, only fields that exist, else fallback */}
         {authorProfile.vehicleBrand || authorProfile.vehicleModel || authorProfile.vehicleColor
           ? [authorProfile.vehicleBrand, authorProfile.vehicleModel, authorProfile.vehicleColor].filter(Boolean).join(' ')
@@ -451,32 +465,33 @@ export function PinModal({
 
             {/* Description (if non-empty) */}
 {pin.description && pin.description.trim() !== '' && (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>Description:</Text>
-    <Text style={styles.infoValue}>{pin.description}</Text>
+  <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+    <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Description:</Text>
+    <Text style={[styles.infoValue, { color: textColor }]}>{pin.description}</Text>
   </View>
 )}
 
             {/* Pin Type */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Type:</Text>
-              <Text style={styles.infoValue}>{pinTypeLabel}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Type:</Text>
+              <Text style={[styles.infoValue, { color: textColor }]}>{pinTypeLabel}</Text>
             </View>
 
             {/* Time until available */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Availability:</Text>
-              <Text style={styles.infoValue}>{willLeaveText}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Availability:</Text>
+              <Text style={[styles.infoValue, { color: textColor }]}>{willLeaveText}</Text>
             </View>
 
             {/* Expiration Countdown */}
             {timeRemaining !== null && !(isReservationApproved && isReservationRequester) && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Expires in:</Text>
+              <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Expires in:</Text>
                 <Text
                   style={[
                     styles.infoValue,
-                    timeRemaining <= 60000 && styles.expiringSoon, // Red if less than 1 minute
+                    { color: textColor },
+                    timeRemaining <= 60000 && { color: errorColor, fontWeight: 'bold' }, // Red if less than 1 minute
                   ]}
                 >
                   {formatTimeRemaining(timeRemaining)}
@@ -486,26 +501,26 @@ export function PinModal({
 
             {/* Distance */}
             {distance !== null && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Distance:</Text>
-                <Text style={styles.infoValue}>{formatDistance(distance)}</Text>
+              <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Distance:</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>{formatDistance(distance)}</Text>
               </View>
             )}
 
             {/* Status */}
 
             {/* Paid/Free */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Payment:</Text>
-              <Text style={styles.infoValue}>
+            <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Payment:</Text>
+              <Text style={[styles.infoValue, { color: textColor }]}>
                 {pin.isPaid ? 'Paid' : 'Free'}
               </Text>
             </View>
 
             {!!reservationStatus && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Reservation:</Text>
-                <Text style={styles.infoValue}>
+              <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Reservation:</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>
                   {reservationStatus === 'pending'
                     ? isReservationRequester
                       ? 'Pending (you requested)'
@@ -522,9 +537,9 @@ export function PinModal({
             )}
 
             {isReservationApproved && isReservationRequester && timeRemaining !== null && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Arrive within:</Text>
-                <Text style={styles.infoValue}>
+              <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Arrive within:</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>
                   {formatTimeRemaining(timeRemaining)}
                 </Text>
               </View>
@@ -534,80 +549,55 @@ export function PinModal({
           {/* Owner Controls */}
           {isOwner && (
             <View style={styles.ownerControls}>
-              <TouchableOpacity
-                style={[styles.ownerButton, styles.editButton]}
+              <Button
+                title="Edit"
                 onPress={handleEdit}
+                variant="primary"
                 disabled={deleting}
-              >
-                <Text style={styles.ownerButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.ownerButton, styles.deleteButton]}
+                style={styles.ownerButton}
+              />
+              <Button
+                title="Delete"
                 onPress={handleDelete}
+                variant="danger"
+                loading={deleting}
                 disabled={deleting}
-              >
-                {deleting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.ownerButtonText}>Delete</Text>
-                )}
-              </TouchableOpacity>
+                style={styles.ownerButton}
+              />
             </View>
           )}
 
           {/* Show/Hide Route Button (premium-only) */}
           {canShowRoute && (
-            <TouchableOpacity
-              style={[
-                styles.showRouteButton,
-                hasRoute && styles.hideRouteButton,
-              ]}
+            <Button
+              title={hasRoute ? 'Hide Route' : 'Show Route'}
               onPress={handleRouteToggle}
+              variant={hasRoute ? 'danger' : 'success'}
               disabled={!canShowRoute}
-            >
-              <Text style={styles.showRouteButtonText}>
-                {hasRoute ? 'Hide Route' : 'Show Route'}
-              </Text>
-            </TouchableOpacity>
+              style={styles.actionButton}
+            />
           )}
 
           {/* Request Reservation Button (premium-only, leaving-soon) */}
           {pin.type === 'leaving-soon' && !isOwner && (
-            <TouchableOpacity
-              style={[
-                styles.requestReservationButton,
-                reservationButtonDisabled && styles.requestReservationButtonDisabled,
-              ]}
+            <Button
+              title={isPremium ? 'Request Reservation' : 'Request Reservation (Premium)'}
               onPress={handleRequestReservation}
+              variant="primary"
+              loading={reservationLoading}
               disabled={reservationButtonDisabled}
-            >
-              {reservationLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.requestReservationButtonText}>
-                  {isPremium ? 'Request Reservation' : 'Request Reservation (Premium)'}
-                </Text>
-              )}
-            </TouchableOpacity>
+              style={styles.actionButton}
+            />
           )}
 
             {/* Navigate Button (premium-only) */}
-            <TouchableOpacity
-              style={[
-                styles.navigateButton,
-                (!canNavigate || isExpired) && styles.navigateButtonDisabled,
-              ]}
+            <Button
+              title={isExpired ? 'Expired' : isPremium ? 'Navigate' : 'Navigate (Premium)'}
               onPress={handleNavigate}
+              variant="primary"
               disabled={!canNavigate || isExpired}
-            >
-              <Text style={styles.navigateButtonText}>
-                {isExpired
-                  ? 'Expired'
-                  : isPremium
-                  ? 'Navigate'
-                  : 'Navigate (Premium)'}
-              </Text>
-            </TouchableOpacity>
+              style={styles.actionButton}
+            />
           </ScrollView>
         </View>
       </Pressable>
@@ -627,7 +617,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 16,
     borderBottomWidth: 2,
-    borderBottomColor: '#2f95dc22',
   },
   trustRow: {
     flexDirection: 'row',
@@ -647,14 +636,12 @@ const styles = StyleSheet.create({
   },
   trustLabel: {
     fontWeight: '500',
-    color: '#666',
     marginRight: 10,
     fontSize: 15,
     minWidth: 90,
   },
   trustValue: {
     fontWeight: '600',
-    color: '#222',
     fontSize: 15,
   },
   modalOverlay: {
@@ -663,7 +650,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -679,19 +665,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2f95dc',
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
     fontSize: 18,
-    color: '#666',
     fontWeight: 'bold',
   },
   modalScrollContainer: {
@@ -710,63 +693,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   infoLabel: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 16,
-    color: '#000',
     fontWeight: '600',
   },
-  showRouteButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+  actionButton: {
     marginTop: 10,
-  },
-  hideRouteButton: {
-    backgroundColor: '#ff4444',
-  },
-  showRouteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  requestReservationButton: {
-    backgroundColor: '#6A5ACD',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  requestReservationButtonDisabled: {
-    backgroundColor: '#bdb7e6',
-  },
-  requestReservationButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  navigateButton: {
-    backgroundColor: '#2f95dc',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  navigateButtonDisabled: {
-    backgroundColor: '#ccc',
-    opacity: 0.6,
-  },
-  navigateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   ownerControls: {
     flexDirection: 'row',
@@ -776,24 +713,6 @@ const styles = StyleSheet.create({
   },
   ownerButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editButton: {
-    backgroundColor: '#2f95dc',
-  },
-  deleteButton: {
-    backgroundColor: '#ff4444',
-  },
-  ownerButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  expiringSoon: {
-    color: '#ff4444',
-    fontWeight: 'bold',
   },
 });
 

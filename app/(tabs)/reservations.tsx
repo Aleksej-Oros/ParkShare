@@ -3,10 +3,10 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { firestore } from '@/firebase';
@@ -19,6 +19,12 @@ import {
   rejectReservation,
 } from '@/services/parkingService';
 import { ParkingSpot } from '@/models/firestore';
+import { Text as ThemedText } from '@/components/Themed';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
+import { useThemeColor } from '@/components/Themed';
 
 const nowLabel = () => Date.now();
 const toMillis = (value: any): number => {
@@ -43,6 +49,13 @@ export default function ReservationsTab() {
   >({});
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [now, setNow] = useState(nowLabel());
+
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   useEffect(() => {
     const interval = setInterval(() => setNow(nowLabel()), 1000);
@@ -127,7 +140,7 @@ export default function ReservationsTab() {
               ? [profile?.vehicleBrand, profile?.vehicleModel, profile?.vehicleColor]
                   .filter(Boolean)
                   .join(' ')
-              : '—';
+              : '-';
           setRequesterProfiles((prev) => ({
             ...prev,
             [id]: {
@@ -141,7 +154,7 @@ export default function ReservationsTab() {
             ...prev,
             [id]: {
               displayName: 'Unknown',
-              vehicleText: '—',
+              vehicleText: '-',
             },
           }));
         });
@@ -204,64 +217,64 @@ export default function ReservationsTab() {
 
   const incomingContent = useMemo(() => {
     if (loadingIncoming) {
-      return <ActivityIndicator size="small" color="#2f95dc" />;
+      return <ActivityIndicator size="small" color={tintColor} />;
     }
     const activeIncoming = incoming.filter((spot) => toMillis((spot as any).expiresAt) > now);
     if (activeIncoming.length === 0) {
-      return <Text style={styles.emptyText}>No incoming requests.</Text>;
+      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>No incoming requests.</ThemedText>;
     }
 
-    return activeIncoming.map((spot) => {
+    return activeIncoming.map((spot, index) => {
       const requesterId = spot.reservation?.requesterId || '';
       const requesterProfile = requesterProfiles[requesterId];
       const requesterName = requesterProfile?.displayName || 'Loading...';
-      const vehicleText = requesterProfile?.vehicleText || '—';
+      const vehicleText = requesterProfile?.vehicleText || '-';
       return (
-        <View key={spot.id} style={styles.card}>
-          <Text style={styles.cardTitle}>Leaving Soon Reservation</Text>
-          <Text style={styles.cardLine}>Requester: {requesterName}</Text>
-          <Text style={styles.cardLine}>Vehicle: {vehicleText}</Text>
+        <View
+          key={spot.id}
+          style={[
+            styles.requestItem,
+            { borderBottomColor: tintColor + '30' },
+            index === activeIncoming.length - 1 && styles.requestItemLast,
+          ]}
+        >
+          <ThemedText style={[styles.cardTitle, { color: textColor }]}>Leaving Soon Reservation</ThemedText>
+          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Requester: {requesterName}</ThemedText>
+          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Vehicle: {vehicleText}</ThemedText>
           <View style={styles.row}>
-            <TouchableOpacity
-              style={styles.acceptButton}
+            <Button
+              title="✅ Accept"
               onPress={() => handleApprove(spot.id)}
+              variant="success"
+              loading={actionLoading[`approve-${spot.id}`]}
               disabled={actionLoading[`approve-${spot.id}`] || actionLoading[`reject-${spot.id}`]}
-            >
-              {actionLoading[`approve-${spot.id}`] ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>✅ Accept</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.rejectButton}
+              style={styles.actionButton}
+            />
+            <Button
+              title="❌ Reject"
               onPress={() => handleReject(spot.id)}
+              variant="danger"
+              loading={actionLoading[`reject-${spot.id}`]}
               disabled={actionLoading[`reject-${spot.id}`] || actionLoading[`approve-${spot.id}`]}
-            >
-              {actionLoading[`reject-${spot.id}`] ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>❌ Reject</Text>
-              )}
-            </TouchableOpacity>
+              style={styles.actionButton}
+            />
           </View>
         </View>
       );
     });
-  }, [incoming, loadingIncoming, requesterProfiles, actionLoading, now]);
+  }, [incoming, loadingIncoming, requesterProfiles, actionLoading, now, textColor, textSecondaryColor, tintColor]);
 
   const outgoingContent = useMemo(() => {
     if (loadingOutgoing) {
-      return <ActivityIndicator size="small" color="#2f95dc" />;
+      return <ActivityIndicator size="small" color={tintColor} />;
     }
     const activeOutgoing = outgoing.filter((spot) => toMillis((spot as any).expiresAt) > now);
     if (activeOutgoing.length === 0) {
-      return <Text style={styles.emptyText}>No outgoing requests.</Text>;
+      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>No outgoing requests.</ThemedText>;
     }
 
-    return activeOutgoing.map((spot) => {
+    return activeOutgoing.map((spot, index) => {
       const status = normalizeReservationStatus(spot);
-      const reservation = spot.reservation;
       const spotExpiresAt = toMillis((spot as any).expiresAt);
       const expiresIn = spotExpiresAt > now ? spotExpiresAt - now : 0;
       const countdown =
@@ -270,101 +283,108 @@ export default function ReservationsTab() {
           : null;
 
       return (
-        <View key={spot.id} style={styles.card}>
-          <Text style={styles.cardTitle}>Reservation Request</Text>
-          <Text style={styles.cardLine}>
+        <View
+          key={spot.id}
+          style={[
+            styles.requestItem,
+            { borderBottomColor: tintColor + '30' },
+            index === activeOutgoing.length - 1 && styles.requestItemLast,
+          ]}
+        >
+          <ThemedText style={[styles.cardTitle, { color: textColor }]}>Reservation Request</ThemedText>
+          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>
             Status: {status || 'unknown'}
-          </Text>
+          </ThemedText>
           {status === 'approved' && countdown && (
-            <Text style={styles.cardLine}>Arrive within: {countdown}</Text>
+            <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Arrive within: {countdown}</ThemedText>
           )}
           {status === 'pending' && (
-            <TouchableOpacity
-              style={styles.cancelButton}
+            <Button
+              title="Cancel Request"
               onPress={() => handleCancel(spot.id)}
+              variant="secondary"
+              loading={actionLoading[`cancel-${spot.id}`]}
               disabled={actionLoading[`cancel-${spot.id}`]}
-            >
-              {actionLoading[`cancel-${spot.id}`] ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Cancel Request</Text>
-              )}
-            </TouchableOpacity>
+              style={[styles.cancelButton, { borderColor: errorColor + '88', backgroundColor: errorColor + '12' }]}
+              textStyle={{ color: errorColor, fontWeight: '700' }}
+            />
           )}
         </View>
       );
     });
-  }, [outgoing, loadingOutgoing, now, actionLoading]);
+  }, [outgoing, loadingOutgoing, now, actionLoading, textColor, textSecondaryColor, tintColor]);
 
   if (!user) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Reservations</Text>
-        <Text style={styles.emptyText}>Log in to manage reservations.</Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
+        <View style={styles.content}>
+          <ThemedText style={[styles.title, { color: tintColor }]}>Reservations</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>Log in to manage reservations.</ThemedText>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Reservations</Text>
-      {!isPremium && (
-        <Text style={styles.infoText}>Reservation requests are sent by Premium users.</Text>
-      )}
-      <Text style={styles.sectionTitle}>Incoming Requests</Text>
-      {incomingContent}
-      <Text style={styles.sectionTitle}>Outgoing Requests</Text>
-      {outgoingContent}
-    </ScrollView>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedText style={[styles.title, { color: tintColor }]}>Reservations</ThemedText>
+        {!isPremium && (
+          <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>Reservation requests are sent by Premium users.</ThemedText>
+        )}
+        <Card style={{ borderColor: tintColor + '55' }}>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>Incoming Requests</ThemedText>
+          {incomingContent}
+        </Card>
+        <Card style={{ borderColor: tintColor + '55' }}>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>Outgoing Requests</ThemedText>
+          {outgoingContent}
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
+  },
+  content: {
+    flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
   },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#2f95dc',
     marginBottom: 12,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginTop: 16,
+    marginTop: 0,
     marginBottom: 8,
-    color: '#333',
   },
   emptyText: {
-    color: '#666',
     fontSize: 15,
     marginBottom: 12,
   },
   infoText: {
-    color: '#666',
     fontSize: 14,
     marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#f8f9fb',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e6e8f0',
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#222',
   },
   cardLine: {
     fontSize: 14,
-    color: '#444',
     marginBottom: 6,
   },
   row: {
@@ -372,29 +392,21 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 10,
   },
-  acceptButton: {
+  actionButton: {
     flex: 1,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  rejectButton: {
-    flex: 1,
-    backgroundColor: '#ff4444',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#6A5ACD',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+  requestItem: {
+    paddingBottom: 12,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+  },
+  requestItemLast: {
+    borderBottomWidth: 0,
+    marginBottom: 0,
+    paddingBottom: 0,
   },
 });
+

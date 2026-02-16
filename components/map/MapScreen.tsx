@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  LayoutChangeEvent,
 } from 'react-native';
 import MapView, { Region, UrlTile, Polyline } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
@@ -21,12 +22,15 @@ import { useMapPins, MapPin } from './useMapPins';
 import { PinMarker } from './PinMarker';
 import { PinModal } from './PinModal';
 import { ClusterMarker } from './clusterRenderer';
-import { AddressSearchModal } from './AddressSearchModal';
+import { FloatingSearchBar } from './FloatingSearchBar';
 import { useAuth } from '@/hooks/useAuth';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { useRoutePreview } from '@/hooks/useRoutePreview';
 import { openNavigation } from '@/utils/navigation';
 import { GeocodingResult } from '@/services/geocodingService';
+import { useThemeColor } from '@/components/Themed';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
 
 /**
  * OpenStreetMap Tile Provider
@@ -52,10 +56,15 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [region, setRegion] = useState<Region | null>(null);
   const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [liveUserLocation, setLiveUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapViewport, setMapViewport] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const mapRef = useRef<MapView>(null);
+
+  const colorScheme = useColorScheme() ?? 'dark';
+  const tintColor = Colors[colorScheme].tint;
+  const textColor = useThemeColor({}, 'text');
 
   // Get real-time parking pins
   const { pins, loading: pinsLoading } = useMapPins(location, 5000); // 5km radius
@@ -215,19 +224,94 @@ export default function MapScreen() {
     }
   }, [selectedPin]);
 
-  // Handle recenter to user location
-  const handleRecenter = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        500
-      );
+  // Keep in sync with the exact coordinate used by the native user-location marker (blue dot).
+  const handleUserLocationChange = (event: any) => {
+    const coordinate = event?.nativeEvent?.coordinate;
+    if (
+      coordinate &&
+      typeof coordinate.latitude === 'number' &&
+      typeof coordinate.longitude === 'number'
+    ) {
+      const next = { latitude: coordinate.latitude, longitude: coordinate.longitude };
+      setLiveUserLocation(next);
+      setLocation(next);
     }
+  };
+
+  const handleMapLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setMapViewport({ width, height });
+  };
+
+  // Handle recenter to user location (use blue-dot coordinate for exact visual alignment)
+  const handleRecenter = async () => {
+    if (!mapRef.current) return;
+
+    // Prefer map-sourced live user coordinate (same source as blue marker).
+    let target = liveUserLocation ?? location;
+    if (!target) {
+      try {
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Highest,
+        });
+        target = {
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude,
+        };
+        setLocation(target);
+      } catch {
+        // No-op: if location fetch fails and we have no target, we return below.
+      }
+    }
+
+    if (!target) return;
+
+    const nextCamera = {
+      center: {
+        latitude: target.latitude,
+        longitude: target.longitude,
+      },
+      zoom: 17,
+      heading: 0,
+      pitch: 0,
+    } as const;
+
+    // Primary animated move.
+    mapRef.current.animateCamera(
+      nextCamera,
+      { duration: 500 }
+    );
+
+    // Precision calibration:
+    // Compute coordinate currently under visual crosshair and adjust center by delta.
+    // This compensates provider-specific center-offset behavior when zooming from far out.
+    setTimeout(async () => {
+      if (!mapRef.current || mapViewport.width <= 0 || mapViewport.height <= 0) return;
+      try {
+        const camera = await mapRef.current.getCamera();
+        const visualCenterCoord = await mapRef.current.coordinateForPoint({
+          x: mapViewport.width / 2,
+          y: mapViewport.height / 2,
+        });
+        const correctedCenter = {
+          latitude:
+            camera.center.latitude + (target.latitude - visualCenterCoord.latitude),
+          longitude:
+            camera.center.longitude + (target.longitude - visualCenterCoord.longitude),
+        };
+        mapRef.current.setCamera({
+          ...camera,
+          center: correctedCenter,
+          zoom: 17,
+          heading: 0,
+          pitch: 0,
+        });
+      } catch {
+        // Keep animated result if calibration APIs are unavailable.
+      }
+    }, 560);
+
+    setMapCenter(target);
   };
 
   // Handle map region change (track center for pin creation)
@@ -364,9 +448,13 @@ export default function MapScreen() {
       <ClusteredMapView
         ref={mapRef}
         style={styles.map}
+        onLayout={handleMapLayout}
         initialRegion={region}
+        paddingAdjustmentBehavior="never"
+        mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
         provider={undefined}
         showsUserLocation
+        onUserLocationChange={handleUserLocationChange}
         showsMyLocationButton={false}
         userLocationPriority="high"
         clusterColor="#2f95dc"
@@ -405,11 +493,21 @@ export default function MapScreen() {
 
       {/* Floating Add Pin Button */}
       <TouchableOpacity
-        style={styles.floatingButton}
+        style={[
+          styles.floatingButton,
+          styles.addButton,
+          {
+            backgroundColor: colorScheme === 'dark' 
+              ? 'rgba(0, 0, 0, 0.4)' 
+              : 'rgba(0, 0, 0, 0.3)',
+            borderColor: `rgba(0, 175, 245, 0.8)`,
+            borderWidth: 1.5,
+          },
+        ]}
         onPress={handleAddPin}
         activeOpacity={0.8}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
       
       {/* Crosshair indicator for map center (visual guide) */}
@@ -420,30 +518,27 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Floating Search Button */}
-      <TouchableOpacity
-        style={[styles.floatingButton, styles.searchButton]}
-        onPress={() => setSearchModalVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="search" size={24} color="#fff" />
-      </TouchableOpacity>
+      {/* Floating Search Bar */}
+      <FloatingSearchBar onSelect={handleAddressSelect} />
 
       {/* Floating Recenter Button */}
       <TouchableOpacity
-        style={[styles.floatingButton, styles.recenterButton]}
+        style={[
+          styles.floatingButton,
+          styles.recenterButton,
+          {
+            backgroundColor: colorScheme === 'dark' 
+              ? 'rgba(0, 0, 0, 0.4)' 
+              : 'rgba(0, 0, 0, 0.3)',
+            borderColor: `rgba(0, 175, 245, 0.8)`,
+            borderWidth: 1.5,
+          },
+        ]}
         onPress={handleRecenter}
         activeOpacity={0.8}
       >
-        <Ionicons name="locate" size={24} color="#fff" />
+        <Ionicons name="locate" size={22} color="#fff" />
       </TouchableOpacity>
-
-      {/* Address Search Modal */}
-      <AddressSearchModal
-        visible={searchModalVisible}
-        onClose={() => setSearchModalVisible(false)}
-        onSelect={handleAddressSelect}
-      />
 
 
       {/* Pin Modal */}
@@ -525,27 +620,22 @@ const styles = StyleSheet.create({
   floatingButton: {
     position: 'absolute',
     right: 20,
-    bottom: 100,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2f95dc',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  searchButton: {
-    top: 20,
-    left: 20,
-    backgroundColor: '#2f95dc',
+  addButton: {
+    bottom: 100,
   },
   recenterButton: {
     bottom: 20,
-    backgroundColor: '#4CAF50',
   },
   crosshair: {
     position: 'absolute',

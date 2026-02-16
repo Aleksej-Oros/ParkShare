@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { useThemeColor } from '@/components/Themed';
 import { useAuth } from '@/hooks/useAuth';
 import { firestore } from '@/firebase';
 
@@ -20,14 +20,15 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() ?? 'dark';
   const { user } = useAuth();
   const pathname = usePathname();
   const [lastSeenAt, setLastSeenAt] = useState(0);
   const [lastSeenLoaded, setLastSeenLoaded] = useState(false);
   const [hasReservationNotification, setHasReservationNotification] = useState(false);
+  const errorColor = Colors[colorScheme].error;
 
-  const isOnReservationsTab = useMemo(() => pathname?.includes('/two'), [pathname]);
+  const isOnReservationsTab = useMemo(() => pathname?.includes('/reservations'), [pathname]);
   const storageKey = user?.uid ? `reservations:lastSeenAt:${user.uid}` : null;
 
   useEffect(() => {
@@ -132,13 +133,26 @@ export default function TabLayout() {
     };
   }, [user?.uid, lastSeenAt, isOnReservationsTab, lastSeenLoaded]);
 
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardBackground = useThemeColor({}, 'cardBackground');
+  const textColor = useThemeColor({}, 'text');
+  const tintColor = Colors[colorScheme].tint;
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: tintColor,
+        tabBarInactiveTintColor: Colors[colorScheme].tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: cardBackground,
+          borderTopColor: Colors[colorScheme].divider,
+        },
+        headerStyle: {
+          backgroundColor: backgroundColor,
+        },
+        headerTintColor: textColor,
+        // Hide native headers for all tab pages (Map/Profile/Reservations).
+        headerShown: false,
       }}>
       <Tabs.Screen
         name="index"
@@ -156,13 +170,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="reservations"
         options={{
           title: 'Reservations',
           tabBarIcon: ({ color }) => (
             <View style={styles.iconWrapper}>
               <TabBarIcon name="bookmark" color={color} />
-              {hasReservationNotification && <View style={styles.notificationDot} />}
+              {hasReservationNotification && <View style={[styles.notificationDot, { backgroundColor: errorColor }]} />}
             </View>
           ),
         }}
@@ -185,6 +199,5 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#ff4444',
   },
 });

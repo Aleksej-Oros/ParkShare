@@ -16,6 +16,7 @@ import {
   Alert,
   ScrollView,
   Pressable,
+  SafeAreaView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'expo-router';
@@ -23,9 +24,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Text } from '@/components/Themed';
+import { Text, useThemeColor } from '@/components/Themed';
+import { Button } from '@/components/Button';
 import { register, clearError } from '@/features/auth/authSlice';
 import { AppDispatch, RootState } from '@/store';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from '@/components/useColorScheme';
 
 // ------------------
 // Validation schema
@@ -56,6 +60,15 @@ export default function RegisterScreen() {
 
   const dispatch = useDispatch<AppDispatch>();
   const { loading, errorMessage } = useSelector((state: RootState) => state.auth);
+  
+  const colorScheme = useColorScheme() ?? 'dark';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBackground = useThemeColor({}, 'inputBackground');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const tintColor = Colors[colorScheme].tint;
+  const errorColor = Colors[colorScheme].error;
 
   const {
     control,
@@ -115,23 +128,24 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIconContainer}>
-              <Ionicons name="car" size={64} color="#2f95dc" />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.logoContainer}>
+              <View style={[styles.logoIconContainer, { backgroundColor: tintColor + '20' }]}>
+                <Ionicons name="car" size={64} color={tintColor} />
+              </View>
+              <Text style={[styles.logoTitle, { color: tintColor }]}>ParkShare</Text>
             </View>
-            <Text style={styles.logoTitle}>ParkShare</Text>
-          </View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join ParkShare today</Text>
+            <Text style={[styles.title, { color: textColor }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: textSecondaryColor }]}>Join ParkShare today</Text>
 
           <View style={styles.form}>
             {/* Email */}
@@ -143,10 +157,11 @@ export default function RegisterScreen() {
                   <TextInput
                     style={[
                       styles.input,
-                      errors.email && styles.inputError,
+                      { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                      errors.email ? { borderColor: errorColor } : null,
                     ]}
                     placeholder="Email"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={textSecondaryColor}
                     value={value}
                     onChangeText={onChange}
                     onBlur={onBlur}
@@ -158,7 +173,7 @@ export default function RegisterScreen() {
                 )}
               />
               {errors.email && (
-                <Text style={styles.errorText}>{errors.email.message}</Text>
+                <Text style={[styles.errorText, { color: errorColor }]}>{errors.email.message}</Text>
               )}
             </View>
 
@@ -173,10 +188,11 @@ export default function RegisterScreen() {
                       style={[
                         styles.input,
                         styles.passwordInput,
-                        errors.password && styles.inputError,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        errors.password ? { borderColor: errorColor } : null,
                       ]}
                       placeholder="Password (min. 8 characters)"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={textSecondaryColor}
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -195,12 +211,12 @@ export default function RegisterScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
-                    color="#666"
+                    color={textSecondaryColor}
                   />
                 </Pressable>
               </View>
               {errors.password && (
-                <Text style={styles.errorText}>
+                <Text style={[styles.errorText, { color: errorColor }]}>
                   {errors.password.message}
                 </Text>
               )}
@@ -217,10 +233,11 @@ export default function RegisterScreen() {
                       style={[
                         styles.input,
                         styles.passwordInput,
-                        errors.confirmPassword && styles.inputError,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        errors.confirmPassword ? { borderColor: errorColor } : null,
                       ]}
                       placeholder="Confirm Password"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={textSecondaryColor}
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -245,45 +262,40 @@ export default function RegisterScreen() {
                         : 'eye-outline'
                     }
                     size={20}
-                    color="#666"
+                    color={textSecondaryColor}
                   />
                 </Pressable>
               </View>
               {errors.confirmPassword && (
-                <Text style={styles.errorText}>
+                <Text style={[styles.errorText, { color: errorColor }]}>
                   {errors.confirmPassword.message}
                 </Text>
               )}
             </View>
 
             {/* Submit */}
-            <TouchableOpacity
-              style={[
-                styles.button,
-                loading && styles.buttonDisabled,
-              ]}
+            <Button
+              title="Create Account"
               onPress={handleSubmit(onSubmit)}
+              variant="primary"
+              loading={loading}
               disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
+              style={styles.button}
+            />
 
             <View style={styles.linkContainer}>
-              <Text style={styles.linkText}>Already have an account? </Text>
+              <Text style={[styles.linkText, { color: textSecondaryColor }]}>Already have an account? </Text>
               <Link href="/auth/login" asChild>
                 <TouchableOpacity>
-                  <Text style={styles.link}>Sign In</Text>
+                  <Text style={[styles.link, { color: tintColor }]}>Sign In</Text>
                 </TouchableOpacity>
               </Link>
             </View>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -293,7 +305,9 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
@@ -310,13 +324,11 @@ const styles = StyleSheet.create({
   logoIconContainer: {
     marginBottom: 12,
     padding: 18,
-    backgroundColor: '#f0f8ff',
     borderRadius: 60,
   },
   logoTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2f95dc',
     textAlign: 'center',
   },
   title: {
@@ -327,7 +339,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 40,
     textAlign: 'center',
   },
@@ -340,36 +351,17 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  inputError: {
-    borderColor: '#ff4444',
   },
   errorText: {
-    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
   },
   button: {
-    height: 50,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   linkContainer: {
     flexDirection: 'row',
@@ -377,11 +369,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   linkText: {
-    color: '#666',
     fontSize: 14,
   },
   link: {
-    color: '#2f95dc',
     fontSize: 14,
     fontWeight: '600',
   },

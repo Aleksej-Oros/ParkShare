@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text } from './Themed';
+import { Text, useThemeColor } from './Themed';
+import Colors from '@/constants/Colors';
+import { useColorScheme } from './useColorScheme';
 
 interface ParkPointsBarProps {
   points?: number;
@@ -9,12 +11,18 @@ interface ParkPointsBarProps {
 
 const ParkPointsBar: React.FC<ParkPointsBarProps> = ({ points = 20, maxPoints = 100 }) => {
   const percentage = Math.min((points / maxPoints) * 100, 100);
+  const colorScheme = useColorScheme() ?? 'dark';
+  const textColor = useThemeColor({}, 'text');
+  const textSecondaryColor = useThemeColor({}, 'textSecondary');
+  const inputBorder = useThemeColor({}, 'inputBorder');
+  const tintColor = Colors[colorScheme].tint;
+  
   return (
     <View style={styles.wrapper}>
-      <View style={styles.barBg}>
-        <View style={[styles.barFill, { width: `${percentage}%` }]} />
+      <View style={[styles.barBg, { backgroundColor: inputBorder }]}>
+        <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: tintColor }]} />
       </View>
-      <Text style={styles.text}>{points} / {maxPoints} ParkPoints</Text>
+      <Text style={[styles.text, { color: textSecondaryColor }]}>{points} / {maxPoints} ParkPoints</Text>
     </View>
   );
 };
@@ -28,18 +36,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 18,
     borderRadius: 10,
-    backgroundColor: '#e5e5e5',
     overflow: 'hidden',
   },
   barFill: {
     height: 18,
     borderRadius: 10,
-    backgroundColor: '#2f95dc',
   },
   text: {
     fontSize: 13,
     marginTop: 5,
-    color: '#333',
     textAlign: 'center',
   },
 });
