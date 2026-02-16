@@ -21,24 +21,46 @@ import { auth } from '@/firebase';
  * @throws Error if email is invalid or user not found
  */
 export async function sendPasswordReset(email: string): Promise<void> {
-  if (!email || !email.trim()) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const resetRedirectUrl = process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL;
+
+  if (!normalizedEmail) {
     throw new Error('Email is required');
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(normalizedEmail)) {
     throw new Error('Invalid email format');
   }
 
   try {
-    await sendPasswordResetEmail(auth, email);
+    await sendPasswordResetEmail(
+      auth,
+      normalizedEmail,
+      resetRedirectUrl
+        ? {
+            url: resetRedirectUrl,
+            handleCodeInApp: false,
+          }
+        : undefined
+    );
   } catch (error: any) {
-    if (error.code === 'auth/user-not-found') {
-      throw new Error('No account found with this email address');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Invalid email address');
+    switch (error?.code) {
+      case 'auth/invalid-email':
+        throw new Error('Invalid email address');
+      case 'auth/missing-email':
+        throw new Error('Email is required');
+      case 'auth/invalid-continue-uri':
+        throw new Error('Password reset redirect URL is invalid.');
+      case 'auth/unauthorized-continue-uri':
+        throw new Error('Password reset redirect URL is not authorized for this Firebase project.');
+      case 'auth/too-many-requests':
+        throw new Error('Too many reset attempts. Please wait and try again.');
+      case 'auth/network-request-failed':
+        throw new Error('Network error. Please check your internet connection and try again.');
+      default:
+        throw new Error(error?.message || 'Failed to send password reset email');
     }
-    throw new Error(error.message || 'Failed to send password reset email');
   }
 }
 

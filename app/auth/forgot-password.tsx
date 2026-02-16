@@ -3,11 +3,10 @@ import { View, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Pl
 import { Text, useThemeColor } from '@/components/Themed';
 import { Button } from '@/components/Button';
 import { router } from 'expo-router';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/firebase';
 import { validateEmail } from '@/utils/validation';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { sendPasswordReset } from '@/services/authService';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -25,7 +24,7 @@ export default function ForgotPasswordScreen() {
 
   const handleReset = async () => {
     setEmailError('');
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
     setEmail(trimmedEmail);
     if (!trimmedEmail) {
       setEmailError('Email is required.');
@@ -38,17 +37,16 @@ export default function ForgotPasswordScreen() {
     }
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, trimmedEmail);
-      Alert.alert('Reset Email Sent', 'Check your email for instructions to reset your password.', [
+      await sendPasswordReset(trimmedEmail);
+      Alert.alert('Reset Email Requested', 'If an account exists for this email, a reset message will arrive shortly. Check spam/junk too.', [
         { text: 'OK', onPress: () => router.replace('/auth/login') }
       ]);
     } catch (e: any) {
-      if (e.code === 'auth/user-not-found') {
-        setEmailError('No user found with this email address.');
-      } else if (e.code === 'auth/invalid-email') {
+      const message = e?.message || 'Failed to send reset email.';
+      if (message.toLowerCase().includes('invalid email')) {
         setEmailError('Invalid email address.');
       } else {
-        Alert.alert('Error', e.message || 'Failed to send reset email.');
+        Alert.alert('Error', message);
       }
     } finally {
       setLoading(false);

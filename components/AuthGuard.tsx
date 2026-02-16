@@ -29,6 +29,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     // Additional check: verify pathname starts with expected route
     // This prevents race conditions where segments haven't updated yet
     const pathnameStartsWithOnboarding = pathname.startsWith('/onboarding');
+    const isPublicResetRoute = pathname.startsWith('/reset-password');
+
+    // Allow password reset links for both authenticated and unauthenticated users.
+    if (isPublicResetRoute) {
+      return;
+    }
 
     // ❌ Not logged in → auth
     if (!user) {
