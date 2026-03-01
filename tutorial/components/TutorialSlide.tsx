@@ -9,7 +9,6 @@ import { Text } from '@/components/Themed';
 import type { TutorialSlideItem } from '@/tutorial/config/tutorialSlides';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const VIDEO_HEIGHT_RATIO = 0.6;
 
 type TutorialSlideProps = {
   slide: TutorialSlideItem;
@@ -32,7 +31,7 @@ function TutorialSlideComponent({
   useEffect(() => {
     if (!hasVideo || !videoRef.current) return;
     if (isActive) {
-      videoRef.current.playAsync().catch(() => {});
+      videoRef.current.setPositionAsync(0).then(() => videoRef.current?.playAsync()).catch(() => {});
     } else {
       videoRef.current.pauseAsync().catch(() => {});
     }
@@ -52,28 +51,27 @@ function TutorialSlideComponent({
     }
   };
 
-  const videoHeight = SCREEN_WIDTH * VIDEO_HEIGHT_RATIO;
-
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <View style={styles.slideContent}>
-        <View style={[styles.videoContainer, { height: videoHeight }]}>
-          {hasVideo ? (
-            <Video
-              ref={videoRef}
-              source={slide.video as { uri?: string } | number}
-              style={styles.video}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay={isActive}
-              isLooping={false}
-              isMuted
-              useNativeControls={false}
-              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-            />
-          ) : (
-            <View style={styles.videoPlaceholder} />
-          )}
-        </View>
+      <View style={styles.videoContainer}>
+        {hasVideo ? (
+          <Video
+            ref={videoRef}
+            source={slide.video as { uri?: string } | number}
+            style={styles.video}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={isActive}
+            isLooping={false}
+            isMuted
+            useNativeControls={false}
+            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+          />
+        ) : (
+          <View style={styles.videoPlaceholder} />
+        )}
+      </View>
+      <View style={styles.separator} />
+      <View style={styles.descriptionSection}>
         <Text style={[styles.title, { color: textColor }]}>{slide.title}</Text>
         <Text style={[styles.description, { color: textSecondaryColor }]}>{slide.description}</Text>
       </View>
@@ -86,20 +84,13 @@ export const TutorialSlide = memo(TutorialSlideComponent);
 const styles = StyleSheet.create({
   slide: {
     flex: 1,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  slideContent: {
-    alignItems: 'center',
     width: '100%',
-    maxWidth: 400,
   },
   videoContainer: {
+    flex: 1,
     width: '100%',
-    marginBottom: 20,
-    borderRadius: 16,
     overflow: 'hidden',
+    minHeight: 120,
   },
   video: {
     width: '100%',
@@ -108,20 +99,28 @@ const styles = StyleSheet.create({
   videoPlaceholder: {
     flex: 1,
     backgroundColor: 'rgba(0, 175, 245, 0.15)',
-    borderRadius: 16,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
+    backgroundColor: 'rgba(128, 128, 128, 0.25)',
+  },
+  descriptionSection: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 12,
-    paddingHorizontal: 8,
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
-    paddingHorizontal: 8,
-    minHeight: 96,
+    minHeight: 72,
   },
 });

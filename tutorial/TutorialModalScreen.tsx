@@ -110,7 +110,7 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
   const keyExtractor = useCallback((item: (typeof tutorialSlides)[number]) => item.id, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <LinearGradient
         colors={
           colorScheme === 'dark'
@@ -119,8 +119,8 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
         }
         style={StyleSheet.absoluteFill}
       />
-      {/* Top-right: Skip (auto) or Close (force) */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      {/* Top-right: Skip (auto) or Close (force) — flush to top */}
+      <View style={[styles.header, { paddingTop: 6 }]}>
         <TouchableOpacity
           hitSlop={16}
           onPress={forceOpen ? controller.handleClose : controller.handleSkip}
