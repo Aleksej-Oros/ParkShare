@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs, usePathname } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { Tabs, usePathname, router } from 'expo-router';
+import { View, StyleSheet, InteractionManager } from 'react-native';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Colors from '@/constants/Colors';
+import { TUTORIAL_STORAGE_KEY } from '@/tutorial/config/constants';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
 import { useAuth } from '@/hooks/useAuth';
@@ -137,6 +138,33 @@ export default function TabLayout() {
   const cardBackground = useThemeColor({}, 'cardBackground');
   const textColor = useThemeColor({}, 'text');
   const tintColor = Colors[colorScheme].tint;
+
+  // Show tutorial once after user lands on main app (e.g. after onboarding). Run after interactions + delay so nav is ready.
+  const tutorialCheckDoneRef = useRef(false);
+  const tutorialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (tutorialCheckDoneRef.current) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      tutorialTimerRef.current = setTimeout(() => {
+        tutorialCheckDoneRef.current = true;
+        tutorialTimerRef.current = null;
+        AsyncStorage.getItem(TUTORIAL_STORAGE_KEY)
+          .then((value) => {
+            if (value !== 'true') {
+              router.push('/tutorial-modal');
+            }
+          })
+          .catch(() => {});
+      }, 600);
+    });
+    return () => {
+      task.cancel();
+      if (tutorialTimerRef.current) {
+        clearTimeout(tutorialTimerRef.current);
+        tutorialTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <Tabs

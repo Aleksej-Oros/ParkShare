@@ -30,6 +30,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     // This prevents race conditions where segments haven't updated yet
     const pathnameStartsWithOnboarding = pathname.startsWith('/onboarding');
     const isPublicResetRoute = pathname.startsWith('/reset-password');
+    // First-time flow: onboarding confirm navigates to tutorial; profile may still show isOnboarded false (listener delay)
+    const isOnTutorialModal = pathname.startsWith('/tutorial-modal');
 
     // Allow password reset links for both authenticated and unauthenticated users.
     if (isPublicResetRoute) {
@@ -46,21 +48,19 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // ⏳ Logged in but NOT onboarded → onboarding
     if (!isOnboarded) {
-      // CRITICAL: Allow ALL routes under /onboarding/* (index, username, vehicle, confirm)
-      // Check both segments AND pathname to handle async updates
-      // Only redirect to /onboarding if user is completely outside onboarding flow
-      // This check MUST be idempotent and not interfere with navigation within onboarding
-      if (!isInOnboarding && !pathnameStartsWithOnboarding) {
+      // Allow /onboarding/* and /tutorial-modal (post-onboarding first-time tutorial). Do not redirect away from tutorial.
+      if (!isInOnboarding && !pathnameStartsWithOnboarding && !isOnTutorialModal) {
         router.replace('/onboarding');
       }
-      // If already in onboarding (by segments OR pathname), do nothing - allow navigation to proceed
       return;
     }
 
     // ✅ Logged in + onboarded → main app
-    // Only redirect if user is in auth/onboarding (not in tabs or modals)
+    // Only redirect if user is in auth/onboarding (not in tabs or modals).
+    // When on onboarding/confirm, do NOT redirect: confirm screen will navigate to /tutorial-modal (first-time flow).
+    const isOnOnboardingConfirm = pathname === '/onboarding/confirm' || pathname.startsWith('/onboarding/confirm');
     if (isInAuth || isInOnboarding) {
-      if (!isInTabs && !isInMapModal) {
+      if (!isInTabs && !isInMapModal && !isOnOnboardingConfirm) {
         router.replace('/');
       }
     }

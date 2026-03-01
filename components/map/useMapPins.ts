@@ -2,6 +2,7 @@
  * useMapPins Hook
  * Real-time Firestore subscription for parking spots
  * Returns pins formatted for map display
+ * Non-premium: each pin created by others is visible only 30s after that pin's creation (per-pin delay).
  */
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,8 +27,9 @@ export interface MapPin {
   reservation?: ParkingSpotReservation;
 }
 
-const FREE_USER_PIN_DELAY_MS = 30000; // 30 seconds
-const PIN_EXPIRY_CHECK_MS = 15000; // 15 seconds
+/** Non-premium: each pin created by others becomes visible this long after the pin's creation. */
+const FREE_USER_PIN_DELAY_MS = 30000;
+const PIN_EXPIRY_CHECK_MS = 15000;
 
 const EXPIRED_STATUSES: ParkingStatus[] = [
   'walk_in_expired',
@@ -42,6 +44,42 @@ const isActivePin = (pin: Pick<MapPin, 'expiresAt' | 'status'>, now: number) => 
   return !EXPIRED_STATUSES.includes(pin.status);
 };
 
+/** For free users: own pins + other users' pins that were created at least FREE_USER_PIN_DELAY_MS ago. */
+function applyFreeUserDelay(
+  pins: MapPin[],
+  currentUserId: string | null,
+  now: number
+): MapPin[] {
+  if (!currentUserId) return [];
+  return pins.filter((pin) => {
+    if (pin.authorId === currentUserId) return true;
+    const createdAt = typeof pin.createdAt === 'number' ? pin.createdAt : now;
+    return now - createdAt >= FREE_USER_PIN_DELAY_MS;
+  });
+}
+
+/**
+ * Returns the next time (ms since epoch) when a pin will become visible for a free user, or null if none.
+ * Used to schedule a single timeout instead of polling every second.
+ */
+function nextRevealTimeMs(
+  pins: MapPin[],
+  currentUserId: string | null,
+  now: number
+): number | null {
+  if (!currentUserId) return null;
+  let next: number | null = null;
+  for (const pin of pins) {
+    if (pin.authorId === currentUserId) continue;
+    const createdAt = typeof pin.createdAt === 'number' ? pin.createdAt : now;
+    const revealAt = createdAt + FREE_USER_PIN_DELAY_MS;
+    if (revealAt > now && (next === null || revealAt < next)) {
+      next = revealAt;
+    }
+  }
+  return next;
+}
+
 export function useMapPins(
   center: { latitude: number; longitude: number } | null,
   radiusM: number = 5000
@@ -50,8 +88,12 @@ export function useMapPins(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const timeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
   const expiryIntervalRef = useRef<null | ReturnType<typeof setInterval>>(null);
+  const nextRevealTimeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+  const lastVisiblePinsRef = useRef<MapPin[]>([]);
+  const currentUserIdRef = useRef<string | null>(null);
+  const isPremiumRef = useRef(false);
+  const profileLoadingRef = useRef(true);
 
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile(user?.uid || null);
@@ -64,14 +106,14 @@ export function useMapPins(
 
     setLoading(true);
     setError(null);
+    profileLoadingRef.current = profileLoading;
+    currentUserIdRef.current = user?.uid ?? null;
+    isPremiumRef.current = profile?.isPremium === true;
 
     const unsubscribe = listenToNearbySpots(center, radiusM, (spots: ParkingSpot[]) => {
       const now = Date.now();
 
-      // 1️⃣ Filter expired pins FIRST (no expired pin should ever render)
       const activeSpots = spots.filter((spot) => isActivePin(spot, now));
-
-      // 2️⃣ Transform to MapPin
       const mapPins: MapPin[] = activeSpots.map((spot) => ({
         id: spot.id,
         coordinate: {
@@ -91,93 +133,70 @@ export function useMapPins(
 
       const currentUserId = user?.uid;
       const filterReservationVisibility = (pinsToFilter: MapPin[]) => {
-        const now = Date.now();
+        const t = Date.now();
         return pinsToFilter.filter((pin) => {
           const reservation = pin.reservation;
-          // Approved reservations hide the pin for everyone else until the reservation expires.
           const isApproved =
             reservation?.status === 'approved' &&
             typeof reservation.expiresAt === 'number' &&
-            reservation.expiresAt > now;
-          if (!isApproved) {
-            return true;
-          }
-          if (!currentUserId) {
-            return false;
-          }
+            reservation.expiresAt > t;
+          if (!isApproved) return true;
+          if (!currentUserId) return false;
           return reservation.requesterId === currentUserId || pin.authorId === currentUserId;
         });
       };
 
       const visiblePins = filterReservationVisibility(mapPins);
-      const ownPins = visiblePins.filter((pin) => pin.authorId === currentUserId);
+      lastVisiblePinsRef.current = visiblePins;
+      profileLoadingRef.current = profileLoading;
+      currentUserIdRef.current = currentUserId ?? null;
+      isPremiumRef.current = profile?.isPremium === true;
 
-      // 3️⃣ Avoid revealing other users' pins before premium status is known
       if (profileLoading) {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        setPins(ownPins);
+        setPins(visiblePins.filter((p) => p.authorId === currentUserId));
         setLoading(false);
         return;
       }
-      const isPremium = profile?.isPremium === true;
 
-      // 4️⃣ Premium users: instant pins
-      if (isPremium) {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
+      if (profile?.isPremium === true) {
         setPins(visiblePins);
         setLoading(false);
         return;
       }
 
-      // 5️⃣ Free users: own pins instant, others delayed
-      const otherPins = visiblePins.filter((pin) => pin.authorId !== currentUserId);
-
-      setPins((prevPins) => {
-        if (prevPins.length === 0) {
-          return ownPins;
-        }
-
-        const visibleById = new Map(visiblePins.map((pin) => [pin.id, pin]));
-        const now = Date.now();
-        const retained = prevPins.filter(
-          (pin) => visibleById.has(pin.id) && isActivePin(pin, now)
-        );
-        const merged = [...retained];
-
-        ownPins.forEach((pin) => {
-          if (!merged.find((existing) => existing.id === pin.id)) {
-            merged.push(pin);
-          }
-        });
-
-        return merged;
-      });
+      const filtered = applyFreeUserDelay(visiblePins, currentUserId ?? null, now);
+      setPins(filtered);
       setLoading(false);
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
-      timeoutRef.current = setTimeout(() => {
-        setPins([...ownPins, ...otherPins]);
-        timeoutRef.current = null;
-      }, FREE_USER_PIN_DELAY_MS);
+      scheduleNextReveal();
     }, user?.uid);
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+    function scheduleNextReveal() {
+      if (profileLoadingRef.current || isPremiumRef.current) return;
+      const visible = lastVisiblePinsRef.current;
+      const now = Date.now();
+      const next = nextRevealTimeMs(visible, currentUserIdRef.current, now);
+      if (nextRevealTimeoutRef.current) {
+        clearTimeout(nextRevealTimeoutRef.current);
+        nextRevealTimeoutRef.current = null;
       }
-      if (expiryIntervalRef.current) {
-        clearInterval(expiryIntervalRef.current);
-        expiryIntervalRef.current = null;
+      if (next !== null) {
+        const delay = Math.min(next - now, 2147483647);
+        if (delay > 0) {
+          nextRevealTimeoutRef.current = setTimeout(() => {
+            nextRevealTimeoutRef.current = null;
+            const visible2 = lastVisiblePinsRef.current;
+            const now2 = Date.now();
+            setPins(applyFreeUserDelay(visible2, currentUserIdRef.current, now2));
+            scheduleNextReveal();
+          }, delay);
+        }
+      }
+    }
+
+    return () => {
+      if (nextRevealTimeoutRef.current) {
+        clearTimeout(nextRevealTimeoutRef.current);
+        nextRevealTimeoutRef.current = null;
       }
       unsubscribe();
     };

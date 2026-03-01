@@ -40,11 +40,11 @@ export default function ConfirmScreen() {
   const dividerColor = useThemeColor({}, 'divider');
   const tintColor = Colors[colorScheme].tint;
 
-  // Watch for isOnboarded to become true and navigate
+  // Backup: if profile listener updates before handleComplete's navigate runs, navigate to tutorial when isOnboarded flips
   React.useEffect(() => {
     if (isOnboarded && loading) {
       setLoading(false);
-      router.replace('/');
+      router.replace('/tutorial-modal');
     }
   }, [isOnboarded, loading]);
 
@@ -69,16 +69,13 @@ export default function ConfirmScreen() {
         updatedAt: serverTimestamp(),
       });
 
-      // Fallback: if state doesn't update in 2 seconds, navigate anyway
+      // Navigate to tutorial immediately after write (don't wait for profile listener)
+      router.replace('/tutorial-modal');
+
+      // Fallback: if navigation didn't happen (e.g. race), try again after 1.5s
       setTimeout(() => {
-        setLoading((prevLoading) => {
-          if (prevLoading) {
-            router.replace('/');
-            return false;
-          }
-          return prevLoading;
-        });
-      }, 2000);
+        setLoading((prev) => (prev ? false : prev));
+      }, 1500);
     } catch (error: any) {
       setLoading(false);
       Alert.alert(

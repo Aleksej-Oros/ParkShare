@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { View, StyleSheet, TouchableOpacity, Alert, SafeAreaView, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, SafeAreaView, TextInput, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/Themed';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -11,7 +12,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile.realtime';
 import { usePremiumAccess } from '@/hooks/usePremiumAccess';
 import { updateUser } from '@/services/userService';
+import { updateUserPassword } from '@/services/authService';
 import { isValidBrand, isValidModelForBrand, getModelsForBrand } from '@/utils/vehicleData';
+import { validatePassword, validateConfirmPassword } from '@/utils/validation';
 import {
   premiumMonthlyPrice,
   premiumCurrency,
@@ -37,6 +40,19 @@ export default function ProfileScreen() {
   const [isBenefitsExpanded, setIsBenefitsExpanded] = useState(true);
   const [activeSection, setActiveSection] = useState<'overview' | 'account'>('overview');
   const hasSetBenefitsDefault = useRef(false);
+
+  // Change password (Account tab)
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPasswordError, setCurrentPasswordError] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangePasswordExpanded, setIsChangePasswordExpanded] = useState(false);
   
   const colorScheme = useColorScheme() ?? 'dark';
   const backgroundColor = useThemeColor({}, 'background');
@@ -150,6 +166,54 @@ export default function ProfileScreen() {
       // The global listener will redirect to login
     } catch (e: any) {
       Alert.alert('Logout Failed', e.message || 'Could not log out.');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setCurrentPasswordError('');
+    setNewPasswordError('');
+    setConfirmPasswordError('');
+
+    if (!currentPassword.trim()) {
+      setCurrentPasswordError('Current password is required.');
+      return;
+    }
+
+    const newValidation = validatePassword(newPassword);
+    if (!newValidation.isValid) {
+      setNewPasswordError(newValidation.error || 'Invalid password');
+      return;
+    }
+
+    const confirmValidation = validateConfirmPassword(newPassword, confirmPassword);
+    if (!confirmValidation.isValid) {
+      setConfirmPasswordError(confirmValidation.error || 'Passwords do not match');
+      return;
+    }
+
+    if (!authUser) {
+      Alert.alert('Error', 'You must be logged in to change your password.');
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    try {
+      await updateUserPassword(authUser, currentPassword.trim(), newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      Alert.alert('Success', 'Your password has been updated. Use your new password next time you sign in.');
+    } catch (error: any) {
+      const msg = error?.message ?? 'Failed to update password.';
+      if (msg.toLowerCase().includes('current password') || msg.toLowerCase().includes('incorrect')) {
+        setCurrentPasswordError('Current password is incorrect.');
+      } else if (msg.toLowerCase().includes('weak')) {
+        setNewPasswordError('Password must be at least 6 characters.');
+      } else {
+        Alert.alert('Error', msg);
+      }
+    } finally {
+      setChangePasswordLoading(false);
     }
   };
 
@@ -290,6 +354,22 @@ export default function ProfileScreen() {
                 Premium users can unlock discounts through sharing.
               </Text>
             )}
+          </Card>
+
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Support</Text>
+            <TouchableOpacity
+              style={styles.supportRow}
+              onPress={() => router.push('/tutorial-modal?forceOpen=true')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="play-circle-outline" size={24} color={tintColor} style={styles.supportIcon} />
+              <View style={styles.supportTextWrap}>
+                <Text style={[styles.supportItemTitle, { color: textColor }]}>App Tutorial</Text>
+                <Text style={[styles.supportItemSubtitle, { color: textSecondaryColor }]}>Learn how to use the app</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={textSecondaryColor} />
+            </TouchableOpacity>
           </Card>
             </>
           )}
@@ -440,6 +520,117 @@ export default function ProfileScreen() {
               )}
             </View>
           </Card>
+
+          {(() => {
+            const hasPasswordProvider = authUser?.providerData?.some((p) => p?.providerId === 'password') ?? false;
+            if (!hasPasswordProvider) return null;
+            return (
+              <Card style={{ borderColor: tintColor + '55', marginTop: 16 }}>
+                <TouchableOpacity
+                  style={[styles.collapsibleHeader, styles.collapsibleHeaderCentered]}
+                  onPress={() => setIsChangePasswordExpanded((prev) => !prev)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.collapsibleHeaderSpacer} />
+                  <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor, flex: 1 }]}>Change Password</Text>
+                  <View style={styles.collapsibleHeaderChevronWrap}>
+                    <Ionicons
+                      name={isChangePasswordExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={22}
+                      color={tintColor}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {isChangePasswordExpanded ? (
+                <>
+                <View style={styles.section}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Current password</Text>
+                  <View style={styles.passwordInputRow}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        currentPasswordError ? { borderColor: errorColor } : null,
+                      ]}
+                      placeholder="Enter current password"
+                      placeholderTextColor={textSecondaryColor}
+                      value={currentPassword}
+                      onChangeText={(t) => { setCurrentPassword(t); setCurrentPasswordError(''); }}
+                      secureTextEntry={!showCurrentPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!changePasswordLoading}
+                    />
+                    <Pressable style={styles.eyeIcon} onPress={() => setShowCurrentPassword((v) => !v)}>
+                      <Ionicons name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={textSecondaryColor} />
+                    </Pressable>
+                  </View>
+                  {currentPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{currentPasswordError}</Text> : null}
+                </View>
+                <View style={styles.section}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>New password</Text>
+                  <View style={styles.passwordInputRow}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        newPasswordError ? { borderColor: errorColor } : null,
+                      ]}
+                      placeholder="At least 6 characters"
+                      placeholderTextColor={textSecondaryColor}
+                      value={newPassword}
+                      onChangeText={(t) => { setNewPassword(t); setNewPasswordError(''); }}
+                      secureTextEntry={!showNewPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!changePasswordLoading}
+                    />
+                    <Pressable style={styles.eyeIcon} onPress={() => setShowNewPassword((v) => !v)}>
+                      <Ionicons name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={textSecondaryColor} />
+                    </Pressable>
+                  </View>
+                  {newPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{newPasswordError}</Text> : null}
+                </View>
+                <View style={styles.section}>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>Confirm new password</Text>
+                  <View style={styles.passwordInputRow}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
+                        confirmPasswordError ? { borderColor: errorColor } : null,
+                      ]}
+                      placeholder="Confirm new password"
+                      placeholderTextColor={textSecondaryColor}
+                      value={confirmPassword}
+                      onChangeText={(t) => { setConfirmPassword(t); setConfirmPasswordError(''); }}
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!changePasswordLoading}
+                    />
+                    <Pressable style={styles.eyeIcon} onPress={() => setShowConfirmPassword((v) => !v)}>
+                      <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={textSecondaryColor} />
+                    </Pressable>
+                  </View>
+                  {confirmPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{confirmPasswordError}</Text> : null}
+                </View>
+                <Button
+                  title="Change Password"
+                  onPress={handleChangePassword}
+                  variant="primary"
+                  loading={changePasswordLoading}
+                  disabled={changePasswordLoading || !currentPassword || !newPassword || !confirmPassword}
+                  style={styles.changePasswordButton}
+                />
+                </>
+                ) : null}
+              </Card>
+            );
+          })()}
           
           <Button
             title="Log Out"
@@ -575,6 +766,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  collapsibleChevron: {
+    marginLeft: 8,
+  },
+  collapsibleHeaderCentered: {
+    justifyContent: 'center',
+  },
+  collapsibleHeaderSpacer: {
+    width: 30,
+  },
+  collapsibleHeaderChevronWrap: {
+    width: 30,
+    alignItems: 'flex-end',
+  },
   benefitsList: {
     marginTop: 6,
   },
@@ -608,6 +812,21 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: 24,
+  },
+  changePasswordButton: {
+    marginTop: 8,
+  },
+  passwordInputRow: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 44,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
   },
   scrollContent: {
     flexGrow: 1,
@@ -673,6 +892,25 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  supportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  supportIcon: {
+    marginRight: 12,
+  },
+  supportTextWrap: {
+    flex: 1,
+  },
+  supportItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  supportItemSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
 });
 

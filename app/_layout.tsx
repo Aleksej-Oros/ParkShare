@@ -89,6 +89,15 @@ function RootLayoutNav() {
           name="modal"
           options={{ presentation: 'modal', headerShown: false }}
         />
+        <Stack.Screen
+          name="tutorial-modal"
+          options={{
+            presentation: 'modal',
+            animation: 'fade_from_bottom',
+            gestureEnabled: false,
+            headerShown: false,
+          }}
+        />
     </Stack>
 
     </ThemeProvider>
