@@ -15,11 +15,7 @@ import { updateUser } from '@/services/userService';
 import { updateUserPassword } from '@/services/authService';
 import { isValidBrand, isValidModelForBrand, getModelsForBrand } from '@/utils/vehicleData';
 import { validatePassword, validateConfirmPassword } from '@/utils/validation';
-import {
-  premiumMonthlyPrice,
-  premiumCurrency,
-  premiumBillingPeriod,
-} from '@/config/premiumConfig';
+import { premiumMonthlyPrice, premiumCurrency } from '@/config/premiumConfig';
 import { SHARING_REWARD_TARGET } from '@/config/rewardsConfig';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -293,7 +289,7 @@ export default function ProfileScreen() {
                   <Text style={styles.premiumButtonText}>{t('profile.goPremium')}</Text>
                 </TouchableOpacity>
                 <Text style={[styles.premiumPriceText, { color: textSecondaryColor }]}>
-                  {premiumMonthlyPrice} {premiumCurrency} / {premiumBillingPeriod}
+                  {premiumMonthlyPrice} {premiumCurrency} / {t('premium.billingPeriodMonth')}
                 </Text>
                 <Text style={[styles.premiumNoteText, { color: textSecondaryColor }]}>{t('profile.cancelAnytime')}</Text>
               </>

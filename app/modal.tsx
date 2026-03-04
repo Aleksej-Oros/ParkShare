@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, useThemeColor } from '@/components/Themed';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
-import { premiumPriceLabel } from '@/config/premiumConfig';
+import { premiumMonthlyPrice, premiumCurrency } from '@/config/premiumConfig';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLocale } from '@/context/LocaleContext';
@@ -100,7 +100,9 @@ export default function PremiumCheckoutScreen() {
               </Text>
             </>
           ) : (
-            <Text style={[styles.price, { color: textColor }]}>{premiumPriceLabel}</Text>
+            <Text style={[styles.price, { color: textColor }]}>
+              {premiumMonthlyPrice} {premiumCurrency} / {t('premium.billingPeriodMonth')}
+            </Text>
           )}
           <Text style={[styles.helperText, { color: textSecondaryColor }]}>{t('profile.cancelAnytime')}</Text>
         </Card>

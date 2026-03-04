@@ -26,6 +26,7 @@ import { Button } from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
+import { useLocale } from '@/context/LocaleContext';
 
 interface PinModalProps {
   visible: boolean;
@@ -94,6 +95,7 @@ export function PinModal({
   onHideRoute,
   hasRoute = false,
 }: PinModalProps) {
+  const { t } = useLocale();
   const { user } = useAuth();
   const { isPremium } = usePremiumAccess();
   const [authorProfile, setAuthorProfile] = useState<User | null>(null);
@@ -243,23 +245,23 @@ export function PinModal({
     return null;
   }
 
-  const pinTypeLabel = pin.type === 'walk-in' ? 'Walk-In Spot' : 'Leaving Soon';
+  const pinTypeLabel = pin.type === 'walk-in' ? t('pinModal.walkInSpot') : t('pinModal.leavingSoon');
   const willLeaveText =
     pin.type === 'leaving-soon' && pin.willLeaveIn
-      ? `Available in ${pin.willLeaveIn} minutes`
+      ? t('pinModal.availableInMinutes', { count: pin.willLeaveIn })
       : pin.type === 'walk-in'
-      ? 'Available now'
-      : 'Time unknown';
+      ? t('pinModal.availableNow')
+      : t('pinModal.timeUnknown');
 
   // Format time remaining
   const formatTimeRemaining = (ms: number): string => {
-    if (ms <= 0) return 'Expired';
+    if (ms <= 0) return t('pinModal.expired');
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+      return t('pinModal.timeFormatShort', { minutes, seconds });
     }
-    return `${seconds}s`;
+    return t('pinModal.timeFormatSeconds', { seconds });
   };
 
   // Handle edit button
@@ -279,25 +281,25 @@ export function PinModal({
     if (!pin) return;
 
     Alert.alert(
-      'Delete Parking Spot',
-      'Are you sure you want to delete this parking spot? This action cannot be undone.',
+      t('pinModal.deleteTitle'),
+      t('pinModal.deleteMessage'),
       [
         {
-          text: 'Cancel',
+          text: t('pinModal.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: t('pinModal.delete'),
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
             try {
               await deleteParkingSpot(pin.id, user?.uid || '');
               onClose();
-              Alert.alert('Success', 'Parking spot deleted successfully');
+              Alert.alert(t('pinModal.deleteSuccessTitle'), t('pinModal.deleteSuccessMessage'));
             } catch (error: any) {
               console.error('[PinModal] Error deleting pin:', error);
-              Alert.alert('Error', error.message || 'Failed to delete parking spot');
+              Alert.alert(t('pinModal.errorTitle'), error.message || t('pinModal.deleteErrorMessage'));
             } finally {
               setDeleting(false);
             }
@@ -317,14 +319,14 @@ export function PinModal({
 
     // Safety check: expired pins cannot be navigated to
     if (isExpired) {
-      Alert.alert('Expired Pin', 'This parking spot has expired and cannot be navigated to.');
+      Alert.alert(t('pinModal.expiredPinTitle'), t('pinModal.expiredPinNavigateMessage'));
       return;
     }
 
     // Safety check: coordinates must be valid
     if (!pin || typeof pin.coordinate?.latitude !== 'number' || typeof pin.coordinate?.longitude !== 'number') {
       console.warn('[PinModal] Invalid coordinates for navigation', pin?.coordinate);
-      Alert.alert('Error', 'Invalid location coordinates for navigation.');
+      Alert.alert(t('pinModal.errorTitle'), t('pinModal.errorInvalidCoordinatesNav'));
       return;
     }
 
@@ -351,13 +353,13 @@ export function PinModal({
 
     // Safety check: expired pins cannot show route
     if (isExpired) {
-      Alert.alert('Expired Pin', 'This parking spot has expired and cannot show route.');
+      Alert.alert(t('pinModal.expiredPinTitle'), t('pinModal.expiredPinRouteMessage'));
       return;
     }
 
     // Safety check: coordinates must be valid
     if (!pin || !userLocation) {
-      Alert.alert('Error', 'Unable to show route. Location data is missing.');
+      Alert.alert(t('pinModal.errorTitle'), t('pinModal.errorRouteLocationMissing'));
       return;
     }
 
@@ -368,7 +370,7 @@ export function PinModal({
       typeof userLocation.longitude !== 'number'
     ) {
       console.warn('[PinModal] Invalid coordinates for route', { pin: pin?.coordinate, userLocation });
-      Alert.alert('Error', 'Invalid location coordinates for route.');
+      Alert.alert(t('pinModal.errorTitle'), t('pinModal.errorInvalidCoordinatesRoute'));
       return;
     }
 
@@ -380,7 +382,7 @@ export function PinModal({
 
   const handleRequestReservation = async () => {
     if (!pin || !user?.uid) {
-      Alert.alert('Login Required', 'You must be logged in to request a reservation.');
+      Alert.alert(t('pinModal.loginRequiredTitle'), t('pinModal.loginRequiredMessage'));
       return;
     }
     if (!isPremium) {
@@ -395,10 +397,10 @@ export function PinModal({
     setLocalRequestPending(true);
     try {
       await requestReservation(pin.id, user.uid);
-      Alert.alert('Request Sent', 'Your reservation request has been sent to the pin owner.');
+      Alert.alert(t('pinModal.requestSentTitle'), t('pinModal.requestSentMessage'));
     } catch (error: any) {
       console.error('[PinModal] Error requesting reservation:', error);
-      Alert.alert('Request Failed', error.message || 'Unable to request reservation.');
+      Alert.alert(t('pinModal.requestFailedTitle'), error.message || t('pinModal.loginRequiredMessage'));
       setLocalRequestPending(false);
     } finally {
       setReservationLoading(false);
@@ -430,31 +432,31 @@ export function PinModal({
   {loadingProfile ? (
     <View style={styles.trustRowSkeleton}>
       <ActivityIndicator size="small" color={tintColor} />
-      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Loading user…</Text>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>{t('pinModal.loadingUser')}</Text>
     </View>
   ) : !authorProfile && (
     <View style={styles.trustRowMissing}>
-      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Unknown user</Text>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>{t('pinModal.unknownUser')}</Text>
     </View>
   )}
   {authorProfile && (
     <View style={styles.trustRow}>
       {/* DisplayName always for both types */}
-      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Source:</Text>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>{t('pinModal.source')}</Text>
       <Text style={[styles.trustValue, { color: textColor }]}>
-        {authorProfile.displayName?.trim() || 'Anonymous'}
+        {authorProfile.displayName?.trim() || t('pinModal.anonymous')}
       </Text>
     </View>
   )}
   {/* Show vehicle info for leaving-soon only and only on user fetch success */}
   {authorProfile && pin.type === 'leaving-soon' && (
     <View style={styles.trustRow}>
-      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>Vehicle:</Text>
+      <Text style={[styles.trustLabel, { color: textSecondaryColor }]}>{t('pinModal.vehicle')}</Text>
       <Text style={[styles.trustValue, { color: textColor }]}>
         {/* show as one line, only fields that exist, else fallback */}
         {authorProfile.vehicleBrand || authorProfile.vehicleModel || authorProfile.vehicleColor
           ? [authorProfile.vehicleBrand, authorProfile.vehicleModel, authorProfile.vehicleColor].filter(Boolean).join(' ')
-          : '—'}
+          : t('pinModal.notSpecified')}
       </Text>
     </View>
   )}
@@ -466,27 +468,27 @@ export function PinModal({
             {/* Description (if non-empty) */}
 {pin.description && pin.description.trim() !== '' && (
   <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-    <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Description:</Text>
+    <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.description')}</Text>
     <Text style={[styles.infoValue, { color: textColor }]}>{pin.description}</Text>
   </View>
 )}
 
             {/* Pin Type */}
             <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Type:</Text>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.type')}</Text>
               <Text style={[styles.infoValue, { color: textColor }]}>{pinTypeLabel}</Text>
             </View>
 
             {/* Time until available */}
             <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Availability:</Text>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.availability')}</Text>
               <Text style={[styles.infoValue, { color: textColor }]}>{willLeaveText}</Text>
             </View>
 
             {/* Expiration Countdown */}
             {timeRemaining !== null && !(isReservationApproved && isReservationRequester) && (
               <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Expires in:</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.expiresIn')}</Text>
                 <Text
                   style={[
                     styles.infoValue,
@@ -502,7 +504,7 @@ export function PinModal({
             {/* Distance */}
             {distance !== null && (
               <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Distance:</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.distance')}</Text>
                 <Text style={[styles.infoValue, { color: textColor }]}>{formatDistance(distance)}</Text>
               </View>
             )}
@@ -511,34 +513,34 @@ export function PinModal({
 
             {/* Paid/Free */}
             <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Payment:</Text>
+              <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.payment')}</Text>
               <Text style={[styles.infoValue, { color: textColor }]}>
-                {pin.isPaid ? 'Paid' : 'Free'}
+                {pin.isPaid ? t('pinModal.paid') : t('pinModal.free')}
               </Text>
             </View>
 
             {!!reservationStatus && (
               <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Reservation:</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.reservation')}</Text>
                 <Text style={[styles.infoValue, { color: textColor }]}>
                   {reservationStatus === 'pending'
                     ? isReservationRequester
-                      ? 'Pending (you requested)'
-                      : 'Reservation pending'
+                      ? t('pinModal.pendingYouRequested')
+                      : t('pinModal.reservationPending')
                     : reservationStatus === 'approved'
                     ? isReservationRequester
-                      ? 'Approved (for you)'
-                      : 'Approved'
+                      ? t('pinModal.approvedForYou')
+                      : t('pinModal.approved')
                     : reservationStatus === 'rejected'
-                    ? 'Rejected'
-                    : 'Expired'}
+                    ? t('pinModal.rejected')
+                    : t('pinModal.expired')}
                 </Text>
               </View>
             )}
 
             {isReservationApproved && isReservationRequester && timeRemaining !== null && (
               <View style={[styles.infoRow, { borderBottomColor: dividerColor }]}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Arrive within:</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('pinModal.arriveWithin')}</Text>
                 <Text style={[styles.infoValue, { color: textColor }]}>
                   {formatTimeRemaining(timeRemaining)}
                 </Text>
@@ -550,14 +552,14 @@ export function PinModal({
           {isOwner && (
             <View style={styles.ownerControls}>
               <Button
-                title="Edit"
+                title={t('pinModal.edit')}
                 onPress={handleEdit}
                 variant="primary"
                 disabled={deleting}
                 style={styles.ownerButton}
               />
               <Button
-                title="Delete"
+                title={t('pinModal.delete')}
                 onPress={handleDelete}
                 variant="danger"
                 loading={deleting}
@@ -570,7 +572,7 @@ export function PinModal({
           {/* Show/Hide Route Button (premium-only) */}
           {canShowRoute && (
             <Button
-              title={hasRoute ? 'Hide Route' : 'Show Route'}
+              title={hasRoute ? t('pinModal.hideRoute') : t('pinModal.showRoute')}
               onPress={handleRouteToggle}
               variant={hasRoute ? 'danger' : 'success'}
               disabled={!canShowRoute}
@@ -581,7 +583,7 @@ export function PinModal({
           {/* Request Reservation Button (premium-only, leaving-soon) */}
           {pin.type === 'leaving-soon' && !isOwner && (
             <Button
-              title={isPremium ? 'Request Reservation' : 'Request Reservation (Premium)'}
+              title={isPremium ? t('pinModal.requestReservation') : t('pinModal.requestReservationPremium')}
               onPress={handleRequestReservation}
               variant="primary"
               loading={reservationLoading}
@@ -592,7 +594,7 @@ export function PinModal({
 
             {/* Navigate Button (premium-only) */}
             <Button
-              title={isExpired ? 'Expired' : isPremium ? 'Navigate' : 'Navigate (Premium)'}
+              title={isExpired ? t('pinModal.expired') : isPremium ? t('pinModal.navigate') : t('pinModal.navigatePremium')}
               onPress={handleNavigate}
               variant="primary"
               disabled={!canNavigate || isExpired}
@@ -606,7 +608,7 @@ export function PinModal({
       <UpgradeModal
         visible={upgradeModalVisible}
         onClose={() => setUpgradeModalVisible(false)}
-        message="Premium is required to request reservations or navigate."
+        message={t('pinModal.upgradeMessage')}
       />
     </Modal>
   );
