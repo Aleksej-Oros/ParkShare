@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, useThemeColor } from '@/components/Themed';
@@ -9,14 +9,23 @@ import { premiumPriceLabel } from '@/config/premiumConfig';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useLocale } from '@/context/LocaleContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile.realtime';
 
 export default function PremiumCheckoutScreen() {
   const { t } = useLocale();
+  const { user: authUser } = useAuth();
+  const { profile } = useProfile(authUser?.uid ?? null);
   const colorScheme = useColorScheme() ?? 'dark';
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const textSecondaryColor = useThemeColor({}, 'textSecondary');
   const tintColor = Colors[colorScheme].tint;
+  const discount = profile?.sharingRewardDiscount;
+  const hasValidDiscount =
+    discount &&
+    typeof discount.expiresAt === 'number' &&
+    discount.expiresAt > Date.now();
 
   const handleSubscribe = () => {
     // Placeholder for future IAP integration.
@@ -78,7 +87,21 @@ export default function PremiumCheckoutScreen() {
 
         <Card>
           <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.price')}</Text>
-          <Text style={[styles.price, { color: textColor }]}>{premiumPriceLabel}</Text>
+          {hasValidDiscount ? (
+            <>
+              <Text style={[styles.discountBadge, { color: tintColor }]}>
+                {t('premium.youEarnedDiscount', { percent: discount!.percent })}
+              </Text>
+              <Text style={[styles.rewardCodeLabel, { color: textSecondaryColor }]}>
+                {t('premium.useCodeAtCheckout')}
+              </Text>
+              <Text style={[styles.rewardCode, { color: textColor }]} selectable>
+                {discount!.code}
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.price, { color: textColor }]}>{premiumPriceLabel}</Text>
+          )}
           <Text style={[styles.helperText, { color: textSecondaryColor }]}>{t('profile.cancelAnytime')}</Text>
         </Card>
 
@@ -146,6 +169,21 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 22,
     fontWeight: '700',
+  },
+  discountBadge: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  rewardCodeLabel: {
+    fontSize: 14,
+    marginTop: 8,
+  },
+  rewardCode: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 6,
+    letterSpacing: 2,
   },
   helperText: {
     fontSize: 13,

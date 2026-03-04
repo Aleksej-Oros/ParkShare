@@ -11,10 +11,14 @@ import {
 } from 'firebase/firestore';
 import { firestore } from '@/firebase';
 import { ParkingSpot } from '@/models/firestore';
+import {
+  SHARING_REWARD_TARGET,
+  SHARING_REWARD_DISCOUNT_PERCENT,
+  SHARING_REWARD_CODE,
+} from '@/config/rewardsConfig';
 
 const USER_MONTHLY_STATS_COLLECTION = 'userMonthlyStats';
 const USERS_COLLECTION = 'users';
-const MONTHLY_LEAVING_SOON_TARGET = 20;
 
 const formatYearMonth = (timestampMs: number) => {
   const date = new Date(timestampMs);
@@ -97,7 +101,7 @@ export async function trackLeavingSoonCompletion(spot: ParkingSpot): Promise<voi
     const currentCount =
       typeof statsData?.leavingSoonCount === 'number' ? statsData?.leavingSoonCount : 0;
     const newCount = currentCount + 1;
-    const rewardUnlocked = newCount >= MONTHLY_LEAVING_SOON_TARGET;
+    const rewardUnlocked = newCount >= SHARING_REWARD_TARGET;
 
     const userData = userSnap.exists() ? userSnap.data() : null;
     const isPremium =
@@ -107,6 +111,16 @@ export async function trackLeavingSoonCompletion(spot: ParkingSpot): Promise<voi
 
     const shouldSetRewardEligible =
       rewardUnlocked && isPremium && userData?.rewardEligibleNextMonth !== true;
+
+    // Grant 30% discount for next month(s) to any user who hits target (industry-standard eligibility + code).
+    const now = Date.now();
+    const endOfNextMonth = new Date(now);
+    endOfNextMonth.setUTCMonth(endOfNextMonth.getUTCMonth() + 2, 0);
+    endOfNextMonth.setUTCHours(23, 59, 59, 999);
+    const expiresAt = endOfNextMonth.getTime();
+    const shouldSetSharingDiscount =
+      rewardUnlocked &&
+      (!userData?.sharingRewardDiscount || (userData.sharingRewardDiscount as { expiresAt?: number })?.expiresAt < now);
 
     const statsPayload = {
       userId: spot.userId,
@@ -136,6 +150,14 @@ export async function trackLeavingSoonCompletion(spot: ParkingSpot): Promise<voi
 
     if (shouldSetRewardEligible) {
       userUpdatePayload.rewardEligibleNextMonth = true;
+    }
+
+    if (shouldSetSharingDiscount) {
+      userUpdatePayload.sharingRewardDiscount = {
+        percent: SHARING_REWARD_DISCOUNT_PERCENT,
+        expiresAt,
+        code: SHARING_REWARD_CODE,
+      };
     }
 
     if (userSnap.exists() && Object.keys(userUpdatePayload).length > 1) {

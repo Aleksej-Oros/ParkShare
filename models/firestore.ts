@@ -21,6 +21,12 @@ export interface User {
   isOnboarded: boolean; // true if user has completed onboarding
   rewardEligibleNextMonth?: boolean;
   leavingSoonSharesThisMonth?: number;
+  /** Earned by sharing SHARING_REWARD_TARGET Leaving Soon spots in a month; valid until expiresAt. Applied at checkout or via SHARING_REWARD_CODE. */
+  sharingRewardDiscount?: {
+    percent: number;
+    expiresAt: number;
+    code: string;
+  };
 
   // --- Trust Metrics Phase 2A (Optional) ---
   pinsCreated?: number;

@@ -20,6 +20,7 @@ import {
   premiumCurrency,
   premiumBillingPeriod,
 } from '@/config/premiumConfig';
+import { SHARING_REWARD_TARGET } from '@/config/rewardsConfig';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
@@ -93,8 +94,7 @@ export default function ProfileScreen() {
   const vehicleBrand = profile?.vehicleBrand || '';
   const vehicleModel = profile?.vehicleModel || '';
   const vehicleColor = profile?.vehicleColor || '';
-  const leavingSoonTarget = 20;
-  // TODO: replace with monthly leaving-soon share count from backend stats.
+  const leavingSoonTarget = SHARING_REWARD_TARGET;
   const leavingSoonSharedThisMonth = profile?.leavingSoonSharesThisMonth ?? 0;
   const leavingSoonProgress = Math.min(
     Math.max(leavingSoonSharedThisMonth, 0) / leavingSoonTarget,

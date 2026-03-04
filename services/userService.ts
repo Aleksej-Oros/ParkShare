@@ -150,6 +150,17 @@ export async function getUserById(userId: string): Promise<User | null> {
         typeof data.leavingSoonSharesThisMonth === 'number'
           ? data.leavingSoonSharesThisMonth
           : Number(data.leavingSoonSharesThisMonth || 0),
+      sharingRewardDiscount:
+        data.sharingRewardDiscount &&
+        typeof (data.sharingRewardDiscount as { percent?: number }).percent === 'number' &&
+        typeof (data.sharingRewardDiscount as { expiresAt?: number }).expiresAt === 'number' &&
+        typeof (data.sharingRewardDiscount as { code?: string }).code === 'string'
+          ? {
+              percent: (data.sharingRewardDiscount as { percent: number }).percent,
+              expiresAt: (data.sharingRewardDiscount as { expiresAt: number }).expiresAt,
+              code: (data.sharingRewardDiscount as { code: string }).code,
+            }
+          : undefined,
     };
   } catch (error: any) {
     throw new Error(error.message || 'Failed to fetch user');
@@ -398,6 +409,9 @@ export async function updateUser(
     }
     if (updates.leavingSoonSharesThisMonth !== undefined) {
       updateData.leavingSoonSharesThisMonth = Number(updates.leavingSoonSharesThisMonth || 0);
+    }
+    if (updates.sharingRewardDiscount !== undefined) {
+      updateData.sharingRewardDiscount = updates.sharingRewardDiscount;
     }
 
     await updateDoc(userRef, updateData);
