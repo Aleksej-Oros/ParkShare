@@ -25,6 +25,7 @@ import { Button } from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
+import { useLocale } from '@/context/LocaleContext';
 
 const nowLabel = () => Date.now();
 const toMillis = (value: any): number => {
@@ -39,6 +40,7 @@ const toMillis = (value: any): number => {
 
 export default function ReservationsTab() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const { isPremium } = usePremiumAccess();
   const [incoming, setIncoming] = useState<ParkingSpot[]>([]);
   const [outgoing, setOutgoing] = useState<ParkingSpot[]>([]);
@@ -179,11 +181,11 @@ export default function ReservationsTab() {
     try {
       const result = await approveReservation(spotId, user.uid);
       if (result === 'rejected_due_to_expired') {
-        Alert.alert('Pin Expired', 'This pin expired before approval. The request was rejected.');
+        Alert.alert(t('reservations.pinExpired'), t('reservations.pinExpiredMessage'));
       }
     } catch (error: any) {
       console.error('[ReservationsTab] Approve error', error);
-      Alert.alert('Approval Failed', error.message || 'Unable to approve reservation.');
+      Alert.alert(t('reservations.approvalFailed'), error.message || t('reservations.approvalFailedMessage'));
     } finally {
       setActionLoading((prev) => ({ ...prev, [`approve-${spotId}`]: false }));
     }
@@ -196,7 +198,7 @@ export default function ReservationsTab() {
       await rejectReservation(spotId, user.uid);
     } catch (error: any) {
       console.error('[ReservationsTab] Reject error', error);
-      Alert.alert('Reject Failed', error.message || 'Unable to reject reservation.');
+      Alert.alert(t('reservations.rejectFailed'), error.message || t('reservations.rejectFailedMessage'));
     } finally {
       setActionLoading((prev) => ({ ...prev, [`reject-${spotId}`]: false }));
     }
@@ -209,7 +211,7 @@ export default function ReservationsTab() {
       await cancelReservation(spotId, user.uid);
     } catch (error: any) {
       console.error('[ReservationsTab] Cancel error', error);
-      Alert.alert('Cancel Failed', error.message || 'Unable to cancel reservation.');
+      Alert.alert(t('reservations.cancelFailed'), error.message || t('reservations.cancelFailedMessage'));
     } finally {
       setActionLoading((prev) => ({ ...prev, [`cancel-${spotId}`]: false }));
     }
@@ -221,13 +223,13 @@ export default function ReservationsTab() {
     }
     const activeIncoming = incoming.filter((spot) => toMillis((spot as any).expiresAt) > now);
     if (activeIncoming.length === 0) {
-      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>No incoming requests.</ThemedText>;
+      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>{t('reservations.noIncoming')}</ThemedText>;
     }
 
     return activeIncoming.map((spot, index) => {
       const requesterId = spot.reservation?.requesterId || '';
       const requesterProfile = requesterProfiles[requesterId];
-      const requesterName = requesterProfile?.displayName || 'Loading...';
+      const requesterName = requesterProfile?.displayName || t('common.loading');
       const vehicleText = requesterProfile?.vehicleText || '-';
       return (
         <View
@@ -238,12 +240,12 @@ export default function ReservationsTab() {
             index === activeIncoming.length - 1 && styles.requestItemLast,
           ]}
         >
-          <ThemedText style={[styles.cardTitle, { color: textColor }]}>Leaving Soon Reservation</ThemedText>
-          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Requester: {requesterName}</ThemedText>
-          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Vehicle: {vehicleText}</ThemedText>
+          <ThemedText style={[styles.cardTitle, { color: textColor }]}>{t('reservations.leavingSoonReservation')}</ThemedText>
+          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>{t('reservations.requester')} {requesterName}</ThemedText>
+          <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>{t('reservations.vehicle')} {vehicleText}</ThemedText>
           <View style={styles.row}>
             <Button
-              title="✅ Accept"
+              title={t('reservations.accept')}
               onPress={() => handleApprove(spot.id)}
               variant="success"
               loading={actionLoading[`approve-${spot.id}`]}
@@ -251,7 +253,7 @@ export default function ReservationsTab() {
               style={styles.actionButton}
             />
             <Button
-              title="❌ Reject"
+              title={t('reservations.reject')}
               onPress={() => handleReject(spot.id)}
               variant="danger"
               loading={actionLoading[`reject-${spot.id}`]}
@@ -262,7 +264,7 @@ export default function ReservationsTab() {
         </View>
       );
     });
-  }, [incoming, loadingIncoming, requesterProfiles, actionLoading, now, textColor, textSecondaryColor, tintColor]);
+  }, [incoming, loadingIncoming, requesterProfiles, actionLoading, now, textColor, textSecondaryColor, tintColor, t]);
 
   const outgoingContent = useMemo(() => {
     if (loadingOutgoing) {
@@ -270,7 +272,7 @@ export default function ReservationsTab() {
     }
     const activeOutgoing = outgoing.filter((spot) => toMillis((spot as any).expiresAt) > now);
     if (activeOutgoing.length === 0) {
-      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>No outgoing requests.</ThemedText>;
+      return <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>{t('reservations.noOutgoing')}</ThemedText>;
     }
 
     return activeOutgoing.map((spot, index) => {
@@ -291,16 +293,16 @@ export default function ReservationsTab() {
             index === activeOutgoing.length - 1 && styles.requestItemLast,
           ]}
         >
-          <ThemedText style={[styles.cardTitle, { color: textColor }]}>Reservation Request</ThemedText>
+          <ThemedText style={[styles.cardTitle, { color: textColor }]}>{t('reservations.reservationRequest')}</ThemedText>
           <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>
-            Status: {status || 'unknown'}
+            {t('reservations.status')} {status ? t(`reservations.${status}`) : t('reservations.unknown')}
           </ThemedText>
           {status === 'approved' && countdown && (
-            <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>Arrive within: {countdown}</ThemedText>
+            <ThemedText style={[styles.cardLine, { color: textSecondaryColor }]}>{t('reservations.arriveWithin')} {countdown}</ThemedText>
           )}
           {status === 'pending' && (
             <Button
-              title="Cancel Request"
+              title={t('reservations.cancelRequest')}
               onPress={() => handleCancel(spot.id)}
               variant="secondary"
               loading={actionLoading[`cancel-${spot.id}`]}
@@ -312,14 +314,14 @@ export default function ReservationsTab() {
         </View>
       );
     });
-  }, [outgoing, loadingOutgoing, now, actionLoading, textColor, textSecondaryColor, tintColor]);
+  }, [outgoing, loadingOutgoing, now, actionLoading, textColor, textSecondaryColor, tintColor, t]);
 
   if (!user) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <View style={styles.content}>
-          <ThemedText style={[styles.title, { color: tintColor }]}>Reservations</ThemedText>
-          <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>Log in to manage reservations.</ThemedText>
+          <ThemedText style={[styles.title, { color: tintColor }]}>{t('reservations.title')}</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: textSecondaryColor }]}>{t('reservations.logInToManage')}</ThemedText>
         </View>
       </SafeAreaView>
     );
@@ -328,16 +330,16 @@ export default function ReservationsTab() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <ThemedText style={[styles.title, { color: tintColor }]}>Reservations</ThemedText>
+        <ThemedText style={[styles.title, { color: tintColor }]}>{t('reservations.title')}</ThemedText>
         {!isPremium && (
-          <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>Reservation requests are sent by Premium users.</ThemedText>
+          <ThemedText style={[styles.infoText, { color: textSecondaryColor }]}>{t('reservations.premiumOnlyInfo')}</ThemedText>
         )}
         <Card style={{ borderColor: tintColor + '55' }}>
-          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>Incoming Requests</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>{t('reservations.incomingRequests')}</ThemedText>
           {incomingContent}
         </Card>
         <Card style={{ borderColor: tintColor + '55' }}>
-          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>Outgoing Requests</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>{t('reservations.outgoingRequests')}</ThemedText>
           {outgoingContent}
         </Card>
       </ScrollView>

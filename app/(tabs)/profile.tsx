@@ -23,6 +23,8 @@ import {
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
+import { useLocale } from '@/context/LocaleContext';
+import { SUPPORTED_LOCALES, getLocaleLabel } from '@/localization/languages';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -54,6 +56,7 @@ export default function ProfileScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangePasswordExpanded, setIsChangePasswordExpanded] = useState(false);
   
+  const { locale, setLocale, t } = useLocale();
   const colorScheme = useColorScheme() ?? 'dark';
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -112,19 +115,19 @@ export default function ProfileScreen() {
     const newErrors: { brand?: string; model?: string; color?: string } = {};
     
     if (!editingBrand.trim()) {
-      newErrors.brand = 'Vehicle brand is required';
+      newErrors.brand = t('profile.vehicleBrandRequired');
     } else if (!isValidBrand(editingBrand)) {
-      newErrors.brand = 'Please enter a valid vehicle brand';
+      newErrors.brand = t('profile.validVehicleBrand');
     }
     
     if (!editingModel.trim()) {
-      newErrors.model = 'Vehicle model is required';
+      newErrors.model = t('profile.vehicleModelRequired');
     } else if (editingBrand.trim() && !isValidModelForBrand(editingBrand, editingModel)) {
-      newErrors.model = `"${editingModel}" is not a valid model for ${editingBrand}`;
+      newErrors.model = t('profile.validVehicleBrand');
     }
     
     if (!editingColor.trim()) {
-      newErrors.color = 'Vehicle color is required';
+      newErrors.color = t('profile.vehicleColorRequired');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -229,7 +232,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: tintColor }]}>Profile</Text>
+          <Text style={[styles.title, { color: tintColor }]}>{t('profile.title')}</Text>
 
           <View style={[styles.segmentedControl, { backgroundColor: cardBackground, borderColor: tintColor + '55' }]}>
             <TouchableOpacity
@@ -241,7 +244,7 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <Text style={[styles.segmentButtonText, { color: activeSection === 'overview' ? tintColor : textSecondaryColor }]}>
-                Overview
+                {t('profile.overview')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -253,7 +256,7 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <Text style={[styles.segmentButtonText, { color: activeSection === 'account' ? tintColor : textSecondaryColor }]}>
-                Account
+                {t('profile.account')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -263,36 +266,36 @@ export default function ProfileScreen() {
           <Card variant="premium" style={{ borderColor: tintColor + '55' }}>
             {premiumLoading ? (
               <>
-                <Text style={[styles.cardTitle, { color: textColor }]}>Premium Status</Text>
-                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>Checking your status...</Text>
+                <Text style={[styles.cardTitle, { color: textColor }]}>{t('profile.premiumStatus')}</Text>
+                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>{t('profile.checkingStatus')}</Text>
               </>
             ) : isPremium ? (
               <>
-                <Text style={[styles.cardTitle, { color: textColor }]}>Premium Driver ⭐</Text>
-                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>Premium active</Text>
+                <Text style={[styles.cardTitle, { color: textColor }]}>{t('profile.premiumDriver')}</Text>
+                <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>{t('profile.premiumActive')}</Text>
                 <TouchableOpacity
                   style={[styles.cancelPremiumButton, { backgroundColor: cardBackground, borderColor: inputBorder }]}
                   onPress={handleCancelPremium}
                 >
-                  <Text style={[styles.cancelPremiumButtonText, { color: textColor }]}>Cancel Premium</Text>
+                  <Text style={[styles.cancelPremiumButtonText, { color: textColor }]}>{t('profile.cancelPremium')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={[styles.cardTitle, { color: textColor }]}>Upgrade to Premium</Text>
+                <Text style={[styles.cardTitle, { color: textColor }]}>{t('profile.upgradeToPremium')}</Text>
                 <Text style={[styles.cardSubtitle, { color: textSecondaryColor }]}>
-                  Reserve spots, navigate faster, earn rewards
+                  {t('profile.reserveSpotsNavigateEarn')}
                 </Text>
                 <TouchableOpacity
                   style={[styles.premiumButton, { backgroundColor: tintColor }]}
                   onPress={() => router.push('/modal')}
                 >
-                  <Text style={styles.premiumButtonText}>Go Premium</Text>
+                  <Text style={styles.premiumButtonText}>{t('profile.goPremium')}</Text>
                 </TouchableOpacity>
                 <Text style={[styles.premiumPriceText, { color: textSecondaryColor }]}>
                   {premiumMonthlyPrice} {premiumCurrency} / {premiumBillingPeriod}
                 </Text>
-                <Text style={[styles.premiumNoteText, { color: textSecondaryColor }]}>Cancel anytime</Text>
+                <Text style={[styles.premiumNoteText, { color: textSecondaryColor }]}>{t('profile.cancelAnytime')}</Text>
               </>
             )}
           </Card>
@@ -302,7 +305,7 @@ export default function ProfileScreen() {
               style={styles.collapsibleHeader}
               onPress={() => setIsBenefitsExpanded((prev) => !prev)}
             >
-              <Text style={[styles.sectionTitle, { color: textColor }]}>What you get with Premium</Text>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>{t('profile.whatYouGetWithPremium')}</Text>
               <Text style={[styles.collapsibleIcon, { color: tintColor }]}>
                 {isBenefitsExpanded ? '-' : '+'}
               </Text>
@@ -311,30 +314,30 @@ export default function ProfileScreen() {
               <View style={styles.benefitsList}>
                 <View style={styles.listItemRow}>
                   <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Reserve parking spots before they free up</Text>
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('profile.benefitReserve')}</Text>
                 </View>
                 <View style={styles.listItemRow}>
                   <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-                  <Text style={[styles.listText, { color: textSecondaryColor }]}>In-app route navigation to pins</Text>
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('profile.benefitNavigate')}</Text>
                 </View>
                 <View style={styles.listItemRow}>
                   <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Instant pin visibility (no delay)</Text>
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('profile.benefitInstantPin')}</Text>
                 </View>
                 <View style={styles.listItemRow}>
                   <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Priority access to shared spots</Text>
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('profile.benefitPriority')}</Text>
                 </View>
                 <View style={styles.listItemRow}>
                   <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-                  <Text style={[styles.listText, { color: textSecondaryColor }]}>Monthly rewards & discounts</Text>
+                  <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('profile.benefitRewards')}</Text>
                 </View>
               </View>
             ) : null}
           </Card>
 
           <Card style={{ borderColor: tintColor + '55' }}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Your Activity This Month</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('profile.yourActivityThisMonth')}</Text>
             <View style={[styles.progressBarTrack, { backgroundColor: inputBorder }]}>
               <View
                 style={[
@@ -344,20 +347,42 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={[styles.progressText, { color: textSecondaryColor }]}>
-              {leavingSoonSharedThisMonth} / {leavingSoonTarget} Leaving Soon spots shared
+              {leavingSoonSharedThisMonth} / {leavingSoonTarget} {t('profile.leavingSoonSpotsShared')}
             </Text>
             {hasRewardUnlocked ? (
-              <Text style={[styles.rewardText, { color: successColor }]}>🎉 You earned 50% off next month!</Text>
+              <Text style={[styles.rewardText, { color: successColor }]}>{t('profile.earnedDiscount')}</Text>
             ) : null}
             {!isPremium && (
               <Text style={[styles.noteText, { color: textSecondaryColor }]}>
-                Premium users can unlock discounts through sharing.
+                {t('profile.premiumUnlockNote')}
               </Text>
             )}
           </Card>
 
           <Card style={{ borderColor: tintColor + '55' }}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Support</Text>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('profile.preferences')}</Text>
+            <Text style={[styles.languageDescription, { color: textSecondaryColor }]}>{t('profile.languageDescription')}</Text>
+            {SUPPORTED_LOCALES.map(({ code }) => (
+              <TouchableOpacity
+                key={code}
+                style={[styles.languageRow, locale === code && { backgroundColor: tintColor + '18' }]}
+                onPress={() => setLocale(code)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.languageRowLabel, { color: textColor }]}>
+                  {getLocaleLabel(code, locale)}
+                </Text>
+                {locale === code ? (
+                  <Ionicons name="checkmark-circle" size={24} color={tintColor} />
+                ) : (
+                  <View style={[styles.languageRowDot, { borderColor: inputBorder }]} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </Card>
+
+          <Card style={{ borderColor: tintColor + '55' }}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>{t('profile.support')}</Text>
             <TouchableOpacity
               style={styles.supportRow}
               onPress={() => router.push('/tutorial-modal?forceOpen=true')}
@@ -365,8 +390,8 @@ export default function ProfileScreen() {
             >
               <Ionicons name="play-circle-outline" size={24} color={tintColor} style={styles.supportIcon} />
               <View style={styles.supportTextWrap}>
-                <Text style={[styles.supportItemTitle, { color: textColor }]}>App Tutorial</Text>
-                <Text style={[styles.supportItemSubtitle, { color: textSecondaryColor }]}>Learn how to use the app</Text>
+                <Text style={[styles.supportItemTitle, { color: textColor }]}>{t('profile.appTutorial')}</Text>
+                <Text style={[styles.supportItemSubtitle, { color: textSecondaryColor }]}>{t('profile.appTutorialSubtitle')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={textSecondaryColor} />
             </TouchableOpacity>
@@ -377,39 +402,39 @@ export default function ProfileScreen() {
           {activeSection === 'account' && (
             <>
           <Card style={{ borderColor: tintColor + '55' }}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>User</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>{t('profile.user')}</Text>
             <View style={styles.section}>
-              <Text style={[styles.label, { color: textSecondaryColor }]}>Name:</Text>
+              <Text style={[styles.label, { color: textSecondaryColor }]}>{t('profile.name')}</Text>
               <Text style={[styles.value, { color: textColor }]}>{displayName}</Text>
             </View>
             <View style={styles.section}>
-              <Text style={[styles.label, { color: textSecondaryColor }]}>Email:</Text>
+              <Text style={[styles.label, { color: textSecondaryColor }]}>{t('profile.email')}</Text>
               <Text style={[styles.value, { color: textColor }]}>{email}</Text>
             </View>
           </Card>
 
           <Card style={{ borderColor: tintColor + '55' }}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>Vehicle</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor }]}>{t('profile.vehicle')}</Text>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.label, { color: textSecondaryColor }]}>Details</Text>
+                <Text style={[styles.label, { color: textSecondaryColor }]}>{t('profile.details')}</Text>
                 {!isEditing && (
                   <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
-                    <Text style={[styles.editButtonText, { color: tintColor }]}>Edit</Text>
+                    <Text style={[styles.editButtonText, { color: tintColor }]}>{t('profile.edit')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
               {isEditing ? (
                 <>
                   <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: textColor }]}>Brand *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.brand')}</Text>
                     <TextInput
                       style={[
                         styles.input,
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         errors.brand ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="e.g., Toyota, Honda, BMW"
+                      placeholder={t('profile.placeholderBrand')}
                       placeholderTextColor={textSecondaryColor}
                       value={editingBrand}
                       onChangeText={(text) => {
@@ -433,7 +458,7 @@ export default function ProfileScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: textColor }]}>Model *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.model')}</Text>
                     <TextInput
                       style={[
                         styles.input,
@@ -441,8 +466,8 @@ export default function ProfileScreen() {
                         errors.model ? { borderColor: errorColor } : null,
                       ]}
                       placeholder={editingBrand.trim() && isValidBrand(editingBrand)
-                        ? `e.g., ${availableModels.slice(0, 3).join(', ')}`
-                        : "Select brand first"}
+                        ? `${availableModels.slice(0, 3).join(', ')}`
+                        : t('profile.selectBrandFirst')}
                       placeholderTextColor={textSecondaryColor}
                       value={editingModel}
                       onChangeText={(text) => {
@@ -457,21 +482,21 @@ export default function ProfileScreen() {
                     {errors.model ? <Text style={[styles.errorText, { color: errorColor }]}>{errors.model}</Text> : null}
                     {editingBrand.trim() && isValidBrand(editingBrand) && availableModels.length > 0 && (
                       <Text style={[styles.hintText, { color: textSecondaryColor }]}>
-                        Available: {availableModels.slice(0, 5).join(', ')}
-                        {availableModels.length > 5 ? ` +${availableModels.length - 5} more` : ''}
+                        {t('profile.available')} {availableModels.slice(0, 5).join(', ')}
+                        {availableModels.length > 5 ? ` +${availableModels.length - 5} ${t('profile.more')}` : ''}
                       </Text>
                     )}
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <Text style={[styles.inputLabel, { color: textColor }]}>Color *</Text>
+                    <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.color')}</Text>
                     <TextInput
                       style={[
                         styles.input,
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         errors.color ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="e.g., Red, Blue, Black, White"
+                      placeholder={t('profile.placeholderColor')}
                       placeholderTextColor={textSecondaryColor}
                       value={editingColor}
                       onChangeText={(text) => {
@@ -492,7 +517,7 @@ export default function ProfileScreen() {
                       onPress={handleCancel}
                       disabled={saving}
                     >
-                      <Text style={[styles.cancelButtonText, { color: textColor }]}>Cancel</Text>
+                      <Text style={[styles.cancelButtonText, { color: textColor }]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
@@ -506,7 +531,7 @@ export default function ProfileScreen() {
                       {saving ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.saveButtonText}>Save</Text>
+                        <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -532,7 +557,7 @@ export default function ProfileScreen() {
                   activeOpacity={0.85}
                 >
                   <View style={styles.collapsibleHeaderSpacer} />
-                  <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor, flex: 1 }]}>Change Password</Text>
+                  <Text style={[styles.sectionTitle, styles.sectionTitleCentered, { color: tintColor, flex: 1 }]}>{t('profile.changePassword')}</Text>
                   <View style={styles.collapsibleHeaderChevronWrap}>
                     <Ionicons
                       name={isChangePasswordExpanded ? 'chevron-up' : 'chevron-down'}
@@ -544,7 +569,7 @@ export default function ProfileScreen() {
                 {isChangePasswordExpanded ? (
                 <>
                 <View style={styles.section}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Current password</Text>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.currentPassword')}</Text>
                   <View style={styles.passwordInputRow}>
                     <TextInput
                       style={[
@@ -553,7 +578,7 @@ export default function ProfileScreen() {
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         currentPasswordError ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="Enter current password"
+                      placeholder={t('profile.enterCurrentPassword')}
                       placeholderTextColor={textSecondaryColor}
                       value={currentPassword}
                       onChangeText={(t) => { setCurrentPassword(t); setCurrentPasswordError(''); }}
@@ -569,7 +594,7 @@ export default function ProfileScreen() {
                   {currentPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{currentPasswordError}</Text> : null}
                 </View>
                 <View style={styles.section}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>New password</Text>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.newPassword')}</Text>
                   <View style={styles.passwordInputRow}>
                     <TextInput
                       style={[
@@ -578,7 +603,7 @@ export default function ProfileScreen() {
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         newPasswordError ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="At least 6 characters"
+                      placeholder={t('profile.atLeast6Chars')}
                       placeholderTextColor={textSecondaryColor}
                       value={newPassword}
                       onChangeText={(t) => { setNewPassword(t); setNewPasswordError(''); }}
@@ -594,7 +619,7 @@ export default function ProfileScreen() {
                   {newPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{newPasswordError}</Text> : null}
                 </View>
                 <View style={styles.section}>
-                  <Text style={[styles.inputLabel, { color: textColor }]}>Confirm new password</Text>
+                  <Text style={[styles.inputLabel, { color: textColor }]}>{t('profile.confirmPassword')}</Text>
                   <View style={styles.passwordInputRow}>
                     <TextInput
                       style={[
@@ -603,7 +628,7 @@ export default function ProfileScreen() {
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         confirmPasswordError ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="Confirm new password"
+                      placeholder={t('profile.confirmNewPassword')}
                       placeholderTextColor={textSecondaryColor}
                       value={confirmPassword}
                       onChangeText={(t) => { setConfirmPassword(t); setConfirmPasswordError(''); }}
@@ -619,7 +644,7 @@ export default function ProfileScreen() {
                   {confirmPasswordError ? <Text style={[styles.errorText, { color: errorColor }]}>{confirmPasswordError}</Text> : null}
                 </View>
                 <Button
-                  title="Change Password"
+                  title={t('profile.changePasswordButton')}
                   onPress={handleChangePassword}
                   variant="primary"
                   loading={changePasswordLoading}
@@ -633,7 +658,7 @@ export default function ProfileScreen() {
           })()}
           
           <Button
-            title="Log Out"
+            title={t('profile.logOut')}
             onPress={handleLogout}
             variant="secondary"
             textStyle={{ color: errorColor, fontWeight: '700' }}
@@ -892,6 +917,28 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  languageDescription: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+  },
+  languageRowLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  languageRowDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
   },
   supportRow: {
     flexDirection: 'row',

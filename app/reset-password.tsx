@@ -14,11 +14,13 @@ import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { Button } from '@/components/Button';
 import { Text, useThemeColor } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 import { auth } from '@/firebase';
 import { validateConfirmPassword, validatePassword } from '@/utils/validation';
 import Colors from '@/constants/Colors';
 
 export default function ResetPasswordScreen() {
+  const { t } = useLocale();
   const params = useLocalSearchParams<{ oobCode?: string | string[]; mode?: string | string[] }>();
   const resetCode = useMemo(
     () => (Array.isArray(params.oobCode) ? params.oobCode[0] : params.oobCode) || '',
@@ -77,18 +79,18 @@ export default function ResetPasswordScreen() {
 
     const passwordValidation = validatePassword(newPassword);
     if (!passwordValidation.isValid) {
-      setNewPasswordError(passwordValidation.error || 'Invalid password');
+      setNewPasswordError(passwordValidation.error || t('auth.invalidEmail'));
       return;
     }
 
     const confirmValidation = validateConfirmPassword(newPassword, confirmPassword);
     if (!confirmValidation.isValid) {
-      setConfirmPasswordError(confirmValidation.error || 'Passwords do not match');
+      setConfirmPasswordError(confirmValidation.error || t('auth.invalidEmail'));
       return;
     }
 
     if (!resetCode) {
-      Alert.alert('Invalid Link', 'Password reset link is missing required information.');
+      Alert.alert(t('auth.invalidLink'), t('auth.invalidLinkMessageShort'));
       return;
     }
 
@@ -99,11 +101,11 @@ export default function ResetPasswordScreen() {
     } catch (error: any) {
       const code = error?.code as string | undefined;
       if (code === 'auth/expired-action-code' || code === 'auth/invalid-action-code') {
-        Alert.alert('Expired Link', 'This password reset link is invalid or expired. Please request a new one.');
+        Alert.alert(t('auth.expiredLink'), t('auth.expiredLinkMessage'));
       } else if (code === 'auth/weak-password') {
-        setNewPasswordError('Password must be at least 6 characters.');
+        setNewPasswordError(t('auth.passwordMinLength'));
       } else {
-        Alert.alert('Error', error?.message || 'Could not reset password. Please try again.');
+        Alert.alert(t('auth.error'), error?.message || t('auth.resetSendFailed'));
       }
     } finally {
       setLoading(false);
@@ -120,30 +122,30 @@ export default function ResetPasswordScreen() {
         <View style={styles.content}>
           <View style={[styles.card, { backgroundColor: cardBackground }]}>
             <Image source={require('../assets/images/icon.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={[styles.title, { color: textColor }]}>Reset your password</Text>
+            <Text style={[styles.title, { color: textColor }]}>{t('auth.resetPasswordPageTitle')}</Text>
 
             {checkingLink ? (
-              <Text style={[styles.subtitle, { color: textSecondaryColor }]}>Checking your reset link...</Text>
+              <Text style={[styles.subtitle, { color: textSecondaryColor }]}>{t('auth.checkingLink')}</Text>
             ) : !isLinkValid ? (
               <>
                 <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-                  This reset link is invalid or expired. Request a new one from the Forgot Password page.
+                  {t('auth.invalidLinkMessage')}
                 </Text>
-                <Button title="Back to Login" onPress={handleGoToLogin} variant="primary" style={styles.button} />
+                <Button title={t('auth.backToLogin')} onPress={handleGoToLogin} variant="primary" style={styles.button} />
               </>
             ) : isComplete ? (
               <>
                 <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-                  Your password was updated successfully. You can now sign in with your new password.
+                  {t('auth.passwordUpdatedSuccess')}
                 </Text>
-                <Button title="Go to Login" onPress={handleGoToLogin} variant="primary" style={styles.button} />
+                <Button title={t('auth.goToLogin')} onPress={handleGoToLogin} variant="primary" style={styles.button} />
               </>
             ) : (
               <>
                 <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
                   {resolvedEmail
-                    ? `Create a new password for ${resolvedEmail}.`
-                    : 'Create a new password for your account.'}
+                    ? `${t('auth.createNewPasswordFor')} ${resolvedEmail}.`
+                    : t('auth.createNewPasswordForAccount')}
                 </Text>
 
                 <TextInput
@@ -157,7 +159,7 @@ export default function ResetPasswordScreen() {
                     setNewPassword(text);
                     setNewPasswordError('');
                   }}
-                  placeholder="New password"
+                  placeholder={t('auth.newPassword')}
                   placeholderTextColor={textSecondaryColor}
                   secureTextEntry
                   autoCapitalize="none"
@@ -177,7 +179,7 @@ export default function ResetPasswordScreen() {
                     setConfirmPassword(text);
                     setConfirmPasswordError('');
                   }}
-                  placeholder="Confirm new password"
+                  placeholder={t('profile.confirmNewPassword')}
                   placeholderTextColor={textSecondaryColor}
                   secureTextEntry
                   autoCapitalize="none"
@@ -189,7 +191,7 @@ export default function ResetPasswordScreen() {
                 ) : null}
 
                 <Button
-                  title="Update Password"
+                  title={t('auth.updatePassword')}
                   onPress={handleResetPassword}
                   variant="primary"
                   loading={loading}
@@ -199,7 +201,7 @@ export default function ResetPasswordScreen() {
               </>
             )}
 
-            <Button title="Back to Login" onPress={handleGoToLogin} variant="secondary" style={styles.secondaryButton} />
+            <Button title={t('auth.backToLogin')} onPress={handleGoToLogin} variant="secondary" style={styles.secondaryButton} />
           </View>
         </View>
       </KeyboardAvoidingView>

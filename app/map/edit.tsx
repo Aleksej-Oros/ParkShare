@@ -26,9 +26,11 @@ import { getParkingSpotById, updateParkingSpot } from '@/services/parkingService
 import { ParkingSpot, PinType, ParkingStatus } from '@/models/firestore';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function EditParkingSpotScreen() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const params = useLocalSearchParams<{ spotId: string }>();
   const spotId = params.spotId;
 
@@ -222,7 +224,7 @@ export default function EditParkingSpotScreen() {
             <TouchableOpacity onPress={() => router.back()} style={[styles.cancelButton, { backgroundColor: dividerColor }]}>
               <Ionicons name="close" size={24} color={textSecondaryColor} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: tintColor }]}>Edit Parking Spot</Text>
+            <Text style={[styles.headerTitle, { color: tintColor }]}>{t('map.editParkingSpot')}</Text>
             <View style={styles.placeholder} />
           </View>
 

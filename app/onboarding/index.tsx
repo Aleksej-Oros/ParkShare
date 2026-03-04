@@ -12,9 +12,11 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useTranslation } from 'react-i18next';
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation('common');
   const colorScheme = useColorScheme() ?? 'dark';
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -38,19 +40,19 @@ export default function WelcomeScreen() {
             <Ionicons name="car" size={80} color={tintColor} />
           </View>
 
-          <ThemedText style={[styles.title, { color: tintColor }]}>Welcome to ParkShare!</ThemedText>
+          <ThemedText style={[styles.title, { color: tintColor }]}>{t('onboarding.welcomeTitle')}</ThemedText>
 
           <ThemedText style={[styles.subtitle, { color: textSecondaryColor }]}>
-            Join the community of drivers sharing parking spots in real-time.
+            {t('onboarding.welcomeSubtitle')}
           </ThemedText>
 
           <Card style={{ width: '100%', borderColor: tintColor + '55' }}>
             <View style={styles.features}>
-              <Feature icon="map" text="Find nearby parking spots" tintColor={tintColor} textColor={textColor} />
-              <Feature icon="share" text="Share spots with others" tintColor={tintColor} textColor={textColor} />
-              <Feature icon="bookmark" text="Reserve your spot ahead of time" tintColor={tintColor} textColor={textColor} />
-              <Feature icon="pricetag" text="Earn discounts by sharing" tintColor={tintColor} textColor={textColor} />
-              <Feature icon="navigate" text="Navigate to available parking" tintColor={tintColor} textColor={textColor} />
+              <Feature icon="map" text={t('onboarding.findNearby')} tintColor={tintColor} textColor={textColor} />
+              <Feature icon="share" text={t('onboarding.shareSpots')} tintColor={tintColor} textColor={textColor} />
+              <Feature icon="bookmark" text={t('onboarding.reserveAhead')} tintColor={tintColor} textColor={textColor} />
+              <Feature icon="pricetag" text={t('onboarding.earnDiscounts')} tintColor={tintColor} textColor={textColor} />
+              <Feature icon="navigate" text={t('onboarding.navigateToParking')} tintColor={tintColor} textColor={textColor} />
             </View>
           </Card>
         </View>
@@ -58,7 +60,7 @@ export default function WelcomeScreen() {
 
       <View style={[styles.footer, { paddingBottom: footerPaddingBottom + 24, backgroundColor }]}>
         <Button
-          title="Get Started"
+          title={t('onboarding.getStarted')}
           onPress={handleGetStarted}
           variant="primary"
           style={styles.button}

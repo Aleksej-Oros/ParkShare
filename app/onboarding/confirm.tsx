@@ -22,6 +22,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function ConfirmScreen() {
   const params = useLocalSearchParams<{
@@ -31,6 +32,7 @@ export default function ConfirmScreen() {
     color: string;
   }>();
   const { user } = useAuth();
+  const { t } = useLocale();
   const { profile, isOnboarded } = useProfile(user?.uid ?? null);
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme() ?? 'dark';
@@ -50,7 +52,7 @@ export default function ConfirmScreen() {
 
   const handleComplete = async () => {
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to complete onboarding');
+      Alert.alert(t('auth.error'), t('onboarding.errorMustBeLoggedIn'));
       return;
     }
 
@@ -79,15 +81,15 @@ export default function ConfirmScreen() {
     } catch (error: any) {
       setLoading(false);
       Alert.alert(
-        'Error',
-        error.message || 'Failed to create your profile. Please try again.',
+        t('auth.error'),
+        error.message || t('onboarding.errorCreateProfile'),
         [
           {
-            text: 'Retry',
+            text: t('common.retry'),
             onPress: handleComplete,
           },
           {
-            text: 'Cancel',
+            text: t('common.cancel'),
             style: 'cancel',
           },
         ]
@@ -105,17 +107,17 @@ export default function ConfirmScreen() {
             <Ionicons name="checkmark-circle" size={80} color={tintColor} />
           </View>
 
-          <Text style={[styles.title, { color: tintColor }]}>Review Your Profile</Text>
+          <Text style={[styles.title, { color: tintColor }]}>{t('onboarding.reviewProfile')}</Text>
           <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-            Please review your information before continuing
+            {t('onboarding.reviewInfo')}
           </Text>
 
           <Card style={{ borderColor: tintColor + '55' }}>
             <View style={styles.infoRow}>
               <Ionicons name="person" size={24} color={tintColor} />
               <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Username</Text>
-                <Text style={[styles.infoValue, { color: textColor }]}>{params.username || 'Not set'}</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('onboarding.usernamePlaceholder')}</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>{params.username || t('onboarding.notSet')}</Text>
               </View>
             </View>
 
@@ -124,7 +126,7 @@ export default function ConfirmScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="car" size={24} color={tintColor} />
               <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>Vehicle</Text>
+                <Text style={[styles.infoLabel, { color: textSecondaryColor }]}>{t('profile.vehicle')}</Text>
                 <Text style={[styles.infoValue, { color: textColor }]}>
                   {params.brand || 'N/A'} {params.model || ''} ({params.color || 'N/A'})
                 </Text>
@@ -133,7 +135,7 @@ export default function ConfirmScreen() {
           </Card>
 
           <Button
-            title="Complete Setup"
+            title={t('onboarding.completeSetup')}
             onPress={handleComplete}
             variant="primary"
             loading={loading}

@@ -30,6 +30,7 @@ import { register, clearError } from '@/features/auth/authSlice';
 import { AppDispatch, RootState } from '@/store';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 // ------------------
 // Validation schema
@@ -59,6 +60,7 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useLocale();
   const { loading, errorMessage } = useSelector((state: RootState) => state.auth);
   
   const colorScheme = useColorScheme() ?? 'dark';
@@ -113,17 +115,11 @@ export default function RegisterScreen() {
     const errorMsg = result.payload as string;
 
     if (errorMsg?.includes('email-already-in-use')) {
-      Alert.alert(
-        'Registration Failed',
-        'This email is already registered. Please sign in instead.'
-      );
+      Alert.alert(t('auth.error'), t('auth.emailAlreadyRegistered'));
     } else if (errorMsg?.includes('weak-password')) {
-      Alert.alert(
-        'Registration Failed',
-        'Password is too weak. Please choose a stronger password.'
-      );
+      Alert.alert(t('auth.error'), t('auth.passwordMinLength'));
     } else {
-      Alert.alert('Registration Failed', errorMsg || 'Unknown error occurred');
+      Alert.alert(t('auth.error'), errorMsg || t('common.unknown'));
     }
   };
 
@@ -142,10 +138,10 @@ export default function RegisterScreen() {
               <View style={[styles.logoIconContainer, { backgroundColor: tintColor + '20' }]}>
                 <Ionicons name="car" size={64} color={tintColor} />
               </View>
-              <Text style={[styles.logoTitle, { color: tintColor }]}>ParkShare</Text>
+              <Text style={[styles.logoTitle, { color: tintColor }]}>{t('auth.parkShare')}</Text>
             </View>
-            <Text style={[styles.title, { color: textColor }]}>Create Account</Text>
-            <Text style={[styles.subtitle, { color: textSecondaryColor }]}>Join ParkShare today</Text>
+            <Text style={[styles.title, { color: textColor }]}>{t('auth.registerTitle')}</Text>
+            <Text style={[styles.subtitle, { color: textSecondaryColor }]}>{t('auth.registerSubtitle')}</Text>
 
           <View style={styles.form}>
             {/* Email */}
@@ -160,7 +156,7 @@ export default function RegisterScreen() {
                       { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                       errors.email ? { borderColor: errorColor } : null,
                     ]}
-                    placeholder="Email"
+                    placeholder={t('auth.email')}
                     placeholderTextColor={textSecondaryColor}
                     value={value}
                     onChangeText={onChange}
@@ -191,7 +187,7 @@ export default function RegisterScreen() {
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         errors.password ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="Password (min. 8 characters)"
+                      placeholder={t('auth.password')}
                       placeholderTextColor={textSecondaryColor}
                       value={value}
                       onChangeText={onChange}
@@ -236,7 +232,7 @@ export default function RegisterScreen() {
                         { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                         errors.confirmPassword ? { borderColor: errorColor } : null,
                       ]}
-                      placeholder="Confirm Password"
+                      placeholder={t('auth.confirmPassword')}
                       placeholderTextColor={textSecondaryColor}
                       value={value}
                       onChangeText={onChange}
@@ -275,7 +271,7 @@ export default function RegisterScreen() {
 
             {/* Submit */}
             <Button
-              title="Create Account"
+              title={t('auth.createAccount')}
               onPress={handleSubmit(onSubmit)}
               variant="primary"
               loading={loading}
@@ -284,10 +280,10 @@ export default function RegisterScreen() {
             />
 
             <View style={styles.linkContainer}>
-              <Text style={[styles.linkText, { color: textSecondaryColor }]}>Already have an account? </Text>
+              <Text style={[styles.linkText, { color: textSecondaryColor }]}>{t('auth.haveAccount')}</Text>
               <Link href="/auth/login" asChild>
                 <TouchableOpacity>
-                  <Text style={[styles.link, { color: tintColor }]}>Sign In</Text>
+                  <Text style={[styles.link, { color: tintColor }]}>{t('auth.signInLink')}</Text>
                 </TouchableOpacity>
               </Link>
             </View>

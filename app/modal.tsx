@@ -8,8 +8,10 @@ import { Button } from '@/components/Button';
 import { premiumPriceLabel } from '@/config/premiumConfig';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function PremiumCheckoutScreen() {
+  const { t } = useLocale();
   const colorScheme = useColorScheme() ?? 'dark';
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -19,76 +21,76 @@ export default function PremiumCheckoutScreen() {
   const handleSubscribe = () => {
     // Placeholder for future IAP integration.
     console.log('[Premium] Subscribe pressed');
-    Alert.alert('Coming soon', 'Payments will be available in a future update.');
+    Alert.alert(t('premium.comingSoon'), t('premium.comingSoonMessage'));
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['left', 'right', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Unlock Premium</Text>
-          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>You're one step away</Text>
+          <Text style={[styles.title, { color: textColor }]}>{t('premium.unlockPremium')}</Text>
+          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>{t('premium.oneStepAway')}</Text>
         </View>
 
         <Card>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Quick recap</Text>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.quickRecap')}</Text>
           <View style={styles.list}>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Navigation to parking spots</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.navToSpots')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Reserve upcoming free spots</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.reserveUpcoming')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Instant pin visibility</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.instantPinVisibility')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Advanced search & filters</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.advancedSearch')}</Text>
             </View>
           </View>
         </Card>
 
         <Card>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>What happens after subscribing</Text>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.afterSubscribing')}</Text>
           <View style={styles.list}>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Premium features unlock instantly</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.featuresUnlock')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Existing reservations stay active</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.reservationsStayActive')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Rewards continue accumulating</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.rewardsContinue')}</Text>
             </View>
             <View style={styles.listItemRow}>
               <View style={[styles.listDot, { backgroundColor: tintColor }]} />
-              <Text style={[styles.listText, { color: textSecondaryColor }]}>Cancel anytime from Profile</Text>
+              <Text style={[styles.listText, { color: textSecondaryColor }]}>{t('premium.cancelFromProfile')}</Text>
             </View>
           </View>
         </Card>
 
         <Card>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Price</Text>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>{t('premium.price')}</Text>
           <Text style={[styles.price, { color: textColor }]}>{premiumPriceLabel}</Text>
-          <Text style={[styles.helperText, { color: textSecondaryColor }]}>Cancel anytime</Text>
+          <Text style={[styles.helperText, { color: textSecondaryColor }]}>{t('profile.cancelAnytime')}</Text>
         </Card>
 
         <View style={styles.ctaSection}>
           <Button
-            title="Subscribe & Unlock Premium"
+            title={t('premium.subscribeUnlock')}
             onPress={handleSubscribe}
             variant="primary"
             style={styles.ctaButton}
           />
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Text style={[styles.secondaryAction, { color: textSecondaryColor }]}>Maybe later</Text>
+            <Text style={[styles.secondaryAction, { color: textSecondaryColor }]}>{t('premium.maybeLater')}</Text>
           </Pressable>
         </View>
       </ScrollView>

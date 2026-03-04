@@ -10,6 +10,7 @@ import { TUTORIAL_STORAGE_KEY } from '@/tutorial/config/constants';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocale } from '@/context/LocaleContext';
 import { firestore } from '@/firebase';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
@@ -23,6 +24,7 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'dark';
   const { user } = useAuth();
+  const { t } = useLocale();
   const pathname = usePathname();
   const [lastSeenAt, setLastSeenAt] = useState(0);
   const [lastSeenLoaded, setLastSeenLoaded] = useState(false);
@@ -185,7 +187,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Map',
+          title: t('tabs.map'),
           tabBarIcon: ({ color }) => <TabBarIcon name="map" color={color} />,
           // Removed headerRight - Profile only in footer tab menu
         }}
@@ -193,14 +195,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
       <Tabs.Screen
         name="reservations"
         options={{
-          title: 'Reservations',
+          title: t('tabs.reservations'),
           tabBarIcon: ({ color }) => (
             <View style={styles.iconWrapper}>
               <TabBarIcon name="bookmark" color={color} />

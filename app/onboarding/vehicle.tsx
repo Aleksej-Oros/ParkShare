@@ -18,9 +18,11 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function VehicleScreen() {
   const params = useLocalSearchParams<{ username: string }>();
+  const { t } = useLocale();
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
@@ -39,15 +41,15 @@ export default function VehicleScreen() {
     const newErrors: { brand?: string; model?: string; color?: string } = {};
     
     if (!brand.trim()) {
-      newErrors.brand = 'Vehicle brand is required';
+      newErrors.brand = t('onboarding.vehicleBrandRequired');
     }
     
     if (!model.trim()) {
-      newErrors.model = 'Vehicle model is required';
+      newErrors.model = t('onboarding.vehicleModelRequired');
     }
     
     if (!color.trim()) {
-      newErrors.color = 'Vehicle color is required';
+      newErrors.color = t('onboarding.vehicleColorRequired');
     }
 
     setErrors(newErrors);
@@ -82,21 +84,21 @@ export default function VehicleScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            <Text style={[styles.title, { color: tintColor }]}>Vehicle Information</Text>
+            <Text style={[styles.title, { color: tintColor }]}>{t('onboarding.vehicleTitle')}</Text>
             <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-              Help others identify your vehicle when you share parking spots
+              {t('onboarding.vehicleSubtitle')}
             </Text>
 
             <Card style={{ borderColor: tintColor + '55' }}>
               <View style={styles.inputContainer}>
-                <Text style={[styles.label, { color: textColor }]}>Brand *</Text>
+                <Text style={[styles.label, { color: textColor }]}>{t('profile.brand')}</Text>
                 <TextInput
                   style={[
                     styles.input,
                     { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                     errors.brand ? { borderColor: errorColor } : null,
                   ]}
-                  placeholder="e.g., Toyota, Honda, BMW"
+                  placeholder={t('profile.placeholderBrand')}
                   placeholderTextColor={textSecondaryColor}
                   value={brand}
                   onChangeText={(text) => {
@@ -112,14 +114,14 @@ export default function VehicleScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={[styles.label, { color: textColor }]}>Model *</Text>
+                <Text style={[styles.label, { color: textColor }]}>{t('profile.model')}</Text>
                 <TextInput
                   style={[
                     styles.input,
                     { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                     errors.model ? { borderColor: errorColor } : null,
                   ]}
-                  placeholder="e.g., Civic, Model 3, F-150"
+                  placeholder={t('profile.placeholderModel')}
                   placeholderTextColor={textSecondaryColor}
                   value={model}
                   onChangeText={(text) => {
@@ -135,14 +137,14 @@ export default function VehicleScreen() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={[styles.label, { color: textColor }]}>Color *</Text>
+                <Text style={[styles.label, { color: textColor }]}>{t('profile.color')}</Text>
                 <TextInput
                   style={[
                     styles.input,
                     { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                     errors.color ? { borderColor: errorColor } : null,
                   ]}
-                  placeholder="e.g., Red, Blue, Black, White"
+                  placeholder={t('profile.placeholderColor')}
                   placeholderTextColor={textSecondaryColor}
                   value={color}
                   onChangeText={(text) => {
@@ -159,7 +161,7 @@ export default function VehicleScreen() {
             </Card>
 
             <Button
-              title="Next"
+              title={t('onboarding.next')}
               onPress={handleNext}
               variant="primary"
               loading={loading}

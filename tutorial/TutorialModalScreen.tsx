@@ -3,7 +3,7 @@
  * Force-open mode (from Profile): no persistence, Close instead of Skip.
  * Auto mode (first launch): Skip + persist on complete/skip.
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -26,6 +26,7 @@ import { trackTutorialEvent } from '@/services/analytics';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
+import { useLocale } from '@/context/LocaleContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,10 +36,21 @@ type TutorialModalScreenProps = {
 
 function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreenProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLocale();
   const colorScheme = useColorScheme() ?? 'dark';
   const textColor = useThemeColor({}, 'text');
   const textSecondaryColor = useThemeColor({}, 'textSecondary');
   const tintColor = Colors[colorScheme].tint;
+
+  const translatedSlides = useMemo(
+    () =>
+      tutorialSlides.map((slide) => ({
+        ...slide,
+        title: t(`tutorial.slides.${slide.id}.title`),
+        description: t(`tutorial.slides.${slide.id}.description`),
+      })),
+    [t]
+  );
 
   const onFinish = useCallback(() => {
     // Dismiss modal: replace so we always land on (tabs). Avoids GO_BACK when
@@ -71,7 +83,7 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
   );
 
   const renderSlide = useCallback(
-    ({ item, index }: { item: (typeof tutorialSlides)[number]; index: number }) => (
+    ({ item, index }: { item: (typeof translatedSlides)[number]; index: number }) => (
       <TutorialSlide
         slide={item}
         isActive={index === controller.currentIndex}
@@ -80,15 +92,15 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
         onVideoEnd={controller.goNext}
       />
     ),
-    [controller.currentIndex, controller.goNext, textColor, textSecondaryColor]
+    [controller.currentIndex, controller.goNext, textColor, textSecondaryColor, translatedSlides]
   );
 
   const getCTAButtonTitle = useCallback((): string => {
     if (controller.isLastSlide) {
-      return forceOpen ? 'Close' : 'Get Started';
+      return forceOpen ? t('common.close') : t('common.getStarted');
     }
-    return 'Next';
-  }, [controller.isLastSlide, forceOpen]);
+    return t('common.next');
+  }, [controller.isLastSlide, forceOpen, t]);
 
   const handleCTA = useCallback(() => {
     if (controller.isLastSlide) {
@@ -107,7 +119,7 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
     controller.goNext,
   ]);
 
-  const keyExtractor = useCallback((item: (typeof tutorialSlides)[number]) => item.id, []);
+  const keyExtractor = useCallback((item: (typeof translatedSlides)[number]) => item.id, []);
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -129,14 +141,14 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
           {forceOpen ? (
             <Ionicons name="close" size={28} color={textColor} />
           ) : (
-            <Text style={[styles.skipText, { color: textSecondaryColor }]}>Skip</Text>
+            <Text style={[styles.skipText, { color: textSecondaryColor }]}>{t('common.skip')}</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <FlatList
         ref={flatListRef}
-        data={tutorialSlides}
+        data={translatedSlides}
         renderItem={renderSlide}
         keyExtractor={keyExtractor}
         horizontal
@@ -155,7 +167,7 @@ function TutorialModalScreenComponent({ forceOpen = false }: TutorialModalScreen
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <PaginationDots
-          count={tutorialSlides.length}
+          count={translatedSlides.length}
           activeIndex={controller.currentIndex}
           activeColor={tintColor}
           inactiveColor={textSecondaryColor}

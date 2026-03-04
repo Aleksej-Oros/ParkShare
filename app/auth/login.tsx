@@ -23,6 +23,7 @@ import { AppDispatch, RootState } from '@/store';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useThemeColor } from '@/components/Themed';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -35,6 +36,7 @@ export default function LoginScreen() {
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useLocale();
   const { loading, errorMessage } = useSelector((state: RootState) => state.auth);
   
   const colorScheme = useColorScheme() ?? 'dark';
@@ -57,24 +59,23 @@ export default function LoginScreen() {
     const trimmedEmail = email.trim();
     setEmail(trimmedEmail);
 
-    // Validate inputs (required & format)
     if (!trimmedEmail) {
-      setEmailError('Email is required.');
+      setEmailError(t('auth.emailRequired'));
       return;
     }
 
     const emailValidation = validateEmail(trimmedEmail);
     if (!emailValidation.isValid) {
-      setEmailError(emailValidation.error || 'Invalid email address.');
+      setEmailError(emailValidation.error || t('auth.invalidEmail'));
       return;
     }
 
     if (!password) {
-      setPasswordError('Password is required.');
+      setPasswordError(t('auth.passwordRequired'));
       return;
     }
     if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+      setPasswordError(t('auth.passwordMinLength'));
       return;
     }
 
@@ -88,26 +89,26 @@ export default function LoginScreen() {
     } else {
       const errorMsg = result.payload as string;
       if (errorMsg.includes('user-not-found')) {
-        setEmailError('No user found with this email address.');
+        setEmailError(t('auth.noUserFound'));
       } else if (errorMsg.includes('wrong-password')) {
-        setPasswordError('Incorrect password. Please try again.');
+        setPasswordError(t('auth.wrongPassword'));
       } else if (errorMsg.includes('invalid-email')) {
-        setEmailError('Invalid email address.');
+        setEmailError(t('auth.invalidEmail'));
       } else {
-        Alert.alert('Login Failed', errorMsg);
+        Alert.alert(t('auth.loginFailed'), errorMsg);
       }
     }
   };
 
   const handleForgotPassword = async () => {
     if (!forgotPasswordEmail.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
+      Alert.alert(t('auth.error'), t('auth.enterEmail'));
       return;
     }
 
     const emailValidation = validateEmail(forgotPasswordEmail);
     if (!emailValidation.isValid) {
-      Alert.alert('Error', emailValidation.error || 'Invalid email address');
+      Alert.alert(t('auth.error'), emailValidation.error || t('auth.invalidEmail'));
       return;
     }
 
@@ -115,11 +116,11 @@ export default function LoginScreen() {
     try {
       await sendPasswordReset(forgotPasswordEmail);
       Alert.alert(
-        'Password Reset Sent',
-        'Check your email for instructions to reset your password.',
+        t('auth.passwordResetSent'),
+        t('auth.checkEmailReset'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => {
               setShowForgotPassword(false);
               setForgotPasswordEmail('');
@@ -128,7 +129,7 @@ export default function LoginScreen() {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send password reset email');
+      Alert.alert(t('auth.error'), error.message || t('auth.resetSendFailed'));
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -145,10 +146,10 @@ export default function LoginScreen() {
             <View style={[styles.logoIconContainer, { backgroundColor: tintColor + '20' }]}>
               <Ionicons name="car" size={64} color={tintColor} />
             </View>
-            <Text style={[styles.logoTitle, { color: tintColor }]}>ParkShare</Text>
+            <Text style={[styles.logoTitle, { color: tintColor }]}>{t('auth.parkShare')}</Text>
           </View>
-          <Text style={[styles.title, { color: textColor }]}>Welcome Back</Text>
-          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>Sign in to continue</Text>
+          <Text style={[styles.title, { color: textColor }]}>{t('auth.welcomeBack')}</Text>
+          <Text style={[styles.subtitle, { color: textSecondaryColor }]}>{t('auth.signInContinue')}</Text>
 
           <View style={styles.form}>
           <View style={styles.inputContainer}>
@@ -158,7 +159,7 @@ export default function LoginScreen() {
                 { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                 emailError ? { borderColor: errorColor } : null,
               ]}
-              placeholder="Email"
+              placeholder={t('auth.email')}
               placeholderTextColor={textSecondaryColor}
               value={email}
               onChangeText={(text) => {
@@ -184,7 +185,7 @@ export default function LoginScreen() {
                   { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                   passwordError ? { borderColor: errorColor } : null,
                 ]}
-                placeholder="Password"
+                placeholder={t('auth.password')}
                 placeholderTextColor={textSecondaryColor}
                 value={password}
                 onChangeText={(text) => {
@@ -213,13 +214,13 @@ export default function LoginScreen() {
             {passwordError ? <Text style={[styles.errorText, { color: errorColor }]}>{passwordError}</Text> : null}
             <Link href="/auth/forgot-password" asChild>
               <TouchableOpacity style={styles.forgotPasswordButton}>
-                <Text style={[styles.forgotPasswordText, { color: tintColor }]}>Forgot Password?</Text>
+                <Text style={[styles.forgotPasswordText, { color: tintColor }]}>{t('auth.forgotPassword')}</Text>
               </TouchableOpacity>
             </Link>
           </View>
 
           <Button
-            title="Sign In"
+            title={t('auth.signIn')}
             onPress={handleLogin}
             variant="primary"
             loading={loading}
@@ -228,10 +229,10 @@ export default function LoginScreen() {
           />
 
           <View style={styles.linkContainer}>
-            <Text style={[styles.linkText, { color: textSecondaryColor }]}>Don't have an account? </Text>
+            <Text style={[styles.linkText, { color: textSecondaryColor }]}>{t('auth.noAccount')}</Text>
             <Link href="/auth/register" asChild>
               <TouchableOpacity>
-                <Text style={[styles.link, { color: tintColor }]}>Sign Up</Text>
+                <Text style={[styles.link, { color: tintColor }]}>{t('auth.signUp')}</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -242,16 +243,16 @@ export default function LoginScreen() {
       {showForgotPassword && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Reset Password</Text>
+            <Text style={[styles.modalTitle, { color: textColor }]}>{t('auth.resetPasswordTitle')}</Text>
             <Text style={[styles.modalSubtitle, { color: textSecondaryColor }]}>
-              Enter your email address and we'll send you instructions to reset your password.
+              {t('auth.forgotPasswordModalSubtitle')}
             </Text>
             <TextInput
               style={[
                 styles.modalInput,
                 { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
               ]}
-              placeholder="Email"
+              placeholder={t('auth.email')}
               placeholderTextColor={textSecondaryColor}
               value={forgotPasswordEmail}
               onChangeText={setForgotPasswordEmail}
@@ -262,7 +263,7 @@ export default function LoginScreen() {
             />
             <View style={styles.modalButtons}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 onPress={() => {
                   setShowForgotPassword(false);
                   setForgotPasswordEmail('');
@@ -272,7 +273,7 @@ export default function LoginScreen() {
                 style={styles.modalButton}
               />
               <Button
-                title="Send"
+                title={t('common.send')}
                 onPress={handleForgotPassword}
                 variant="primary"
                 loading={forgotPasswordLoading}

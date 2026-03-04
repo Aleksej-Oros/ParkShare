@@ -18,9 +18,11 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function UsernameScreen() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,18 +46,17 @@ export default function UsernameScreen() {
 
   const validateUsername = (name: string): { isValid: boolean; error?: string } => {
     if (!name || !name.trim()) {
-      return { isValid: false, error: 'Username is required' };
+      return { isValid: false, error: t('onboarding.usernameRequired') };
     }
     if (name.trim().length < 3) {
-      return { isValid: false, error: 'Username must be at least 3 characters' };
+      return { isValid: false, error: t('onboarding.usernameMinLength') };
     }
     if (name.trim().length > 30) {
-      return { isValid: false, error: 'Username must be less than 30 characters' };
+      return { isValid: false, error: t('onboarding.usernameMaxLength') };
     }
-    // Basic validation - no special characters except underscore and dash
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!usernameRegex.test(name.trim())) {
-      return { isValid: false, error: 'Username can only contain letters, numbers, underscore, and dash' };
+      return { isValid: false, error: t('onboarding.usernameInvalidChars') };
     }
     return { isValid: true };
   };
@@ -80,21 +81,21 @@ export default function UsernameScreen() {
         style={styles.container}
       >
         <View style={styles.content}>
-          <Text style={[styles.title, { color: tintColor }]}>Choose Your Username</Text>
+          <Text style={[styles.title, { color: tintColor }]}>{t('onboarding.chooseUsernameTitle')}</Text>
           <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-            This is how other users will see you in the app
+            {t('onboarding.chooseUsernameSubtitle')}
           </Text>
 
           <Card style={{ borderColor: tintColor + '55' }}>
             <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: textColor }]}>Username *</Text>
+              <Text style={[styles.inputLabel, { color: textColor }]}>{t('onboarding.usernamePlaceholder')} *</Text>
               <TextInput
                 style={[
                   styles.input,
                   { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
                   error ? { borderColor: errorColor } : null,
                 ]}
-                placeholder="Enter username"
+                placeholder={t('onboarding.usernamePlaceholder')}
                 placeholderTextColor={textSecondaryColor}
                 value={username}
                 onChangeText={(text) => {
@@ -111,7 +112,7 @@ export default function UsernameScreen() {
           </Card>
 
           <Button
-            title="Next"
+            title={t('onboarding.next')}
             onPress={handleNext}
             variant="primary"
             loading={loading}

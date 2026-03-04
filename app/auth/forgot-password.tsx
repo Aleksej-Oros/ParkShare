@@ -6,9 +6,11 @@ import { router } from 'expo-router';
 import { validateEmail } from '@/utils/validation';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 import { sendPasswordReset } from '@/services/authService';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useLocale();
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,26 +29,26 @@ export default function ForgotPasswordScreen() {
     const trimmedEmail = email.trim().toLowerCase();
     setEmail(trimmedEmail);
     if (!trimmedEmail) {
-      setEmailError('Email is required.');
+      setEmailError(t('auth.emailRequired'));
       return;
     }
     const emailValidation = validateEmail(trimmedEmail);
     if (!emailValidation.isValid) {
-      setEmailError(emailValidation.error || 'Invalid email address.');
+      setEmailError(emailValidation.error || t('auth.invalidEmail'));
       return;
     }
     setLoading(true);
     try {
       await sendPasswordReset(trimmedEmail);
-      Alert.alert('Reset Email Requested', 'If an account exists for this email, a reset message will arrive shortly. Check spam/junk too.', [
-        { text: 'OK', onPress: () => router.replace('/auth/login') }
+      Alert.alert(t('auth.passwordResetSent'), t('auth.checkEmailReset'), [
+        { text: t('common.ok'), onPress: () => router.replace('/auth/login') }
       ]);
     } catch (e: any) {
-      const message = e?.message || 'Failed to send reset email.';
+      const message = e?.message || t('auth.resetSendFailed');
       if (message.toLowerCase().includes('invalid email')) {
-        setEmailError('Invalid email address.');
+        setEmailError(t('auth.invalidEmail'));
       } else {
-        Alert.alert('Error', message);
+        Alert.alert(t('auth.error'), message);
       }
     } finally {
       setLoading(false);
@@ -57,9 +59,9 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: tintColor }]}>Forgot Password?</Text>
+          <Text style={[styles.title, { color: tintColor }]}>{t('auth.forgotPassword')}</Text>
           <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-            Enter your email and we'll send you a link to reset your password.
+            {t('auth.forgotPasswordModalSubtitle')}
           </Text>
           <TextInput
             style={[
@@ -67,7 +69,7 @@ export default function ForgotPasswordScreen() {
               { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
               emailError && { borderColor: errorColor },
             ]}
-            placeholder="Email"
+            placeholder={t('auth.email')}
             placeholderTextColor={textSecondaryColor}
             value={email}
             onChangeText={(text) => {
@@ -81,7 +83,7 @@ export default function ForgotPasswordScreen() {
           />
           {emailError ? <Text style={[styles.errorText, { color: errorColor }]}>{emailError}</Text> : null}
           <Button
-            title="Send Reset Email"
+            title={t('auth.sendResetEmail')}
             onPress={handleReset}
             variant="primary"
             loading={loading}
@@ -89,7 +91,7 @@ export default function ForgotPasswordScreen() {
             style={styles.button}
           />
           <TouchableOpacity onPress={() => router.replace('/auth/login')} style={styles.backLink}>
-            <Text style={[styles.link, { color: tintColor }]}>Back to Login</Text>
+            <Text style={[styles.link, { color: tintColor }]}>{t('auth.backToLogin')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

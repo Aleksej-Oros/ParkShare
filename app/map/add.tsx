@@ -25,9 +25,11 @@ import { createParkingSpot, getUserParkingSpots } from '@/services/parkingServic
 import { PinType, ParkingStatus } from '@/models/firestore';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useLocale } from '@/context/LocaleContext';
 
 export default function AddParkingSpotScreen() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const params = useLocalSearchParams<{
     latitude: string;
     longitude: string;
@@ -57,13 +59,13 @@ export default function AddParkingSpotScreen() {
   // Validation
   const validateForm = (): string | null => {
     if (!selectedPinType) {
-      return 'Please select a pin type';
+      return t('map.validationSelectPinType');
     }
     if (!latitude || !longitude) {
-      return 'Invalid location coordinates';
+      return t('map.validationInvalidLocation');
     }
     if (!user?.uid) {
-      return 'You must be logged in to create a pin';
+      return t('map.validationMustBeLoggedIn');
     }
     return null;
   };
@@ -71,7 +73,7 @@ export default function AddParkingSpotScreen() {
   const handleSubmit = async () => {
     const validationError = validateForm();
     if (validationError) {
-      Alert.alert('Validation Error', validationError);
+      Alert.alert(t('map.validationError'), validationError);
       return;
     }
 
@@ -99,7 +101,7 @@ export default function AddParkingSpotScreen() {
         // Leaving-soon: expiresAt = createdAt + userSelectedMinutes
         willLeaveIn = willLeaveInMinutes;
         if (willLeaveIn < 2 || willLeaveIn > 60) {
-          throw new Error('Leaving time must be between 2 and 60 minutes');
+          throw new Error(t('map.leavingTimeRange'));
         }
         expiresAt = createdAt + willLeaveIn * 60 * 1000;
         status = 'leaving_soon_active';
@@ -114,7 +116,7 @@ export default function AddParkingSpotScreen() {
         );
         
         if (activeLeavingSoon.length > 0) {
-          throw new Error('You already have an active Leaving Soon pin.');
+          throw new Error(t('map.alreadyActiveLeavingSoon'));
         }
       }
 
@@ -137,15 +139,15 @@ export default function AddParkingSpotScreen() {
       });
 
       // Success - navigate back
-      Alert.alert('Success', 'Parking spot created successfully!', [
+      Alert.alert(t('map.success'), t('map.createdSuccess'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => router.back(),
         },
       ]);
     } catch (error: any) {
       console.error('[AddParkingSpotScreen] Error creating pin:', error);
-      Alert.alert('Error', error.message || 'Failed to create parking spot');
+      Alert.alert(t('auth.error'), error.message || t('map.failedToCreate'));
     } finally {
       setLoading(false);
     }
@@ -169,21 +171,21 @@ export default function AddParkingSpotScreen() {
             <TouchableOpacity onPress={handleCancel} style={[styles.cancelButton, { backgroundColor: dividerColor }]}>
               <Ionicons name="close" size={24} color={textSecondaryColor} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: tintColor }]}>Add Parking Spot</Text>
+            <Text style={[styles.headerTitle, { color: tintColor }]}>{t('map.addParkingSpot')}</Text>
             <View style={styles.placeholder} />
           </View>
 
           <View style={styles.form}>
           {/* Description Input (optional) */}
           <Card>
-            <Text style={[styles.label, { color: textColor }]}>Description</Text>
+            <Text style={[styles.label, { color: textColor }]}>{t('map.description')}</Text>
             <TextInput
               style={[
                 styles.input,
                 styles.textArea,
                 { backgroundColor: inputBackground, borderColor: inputBorder, color: textColor },
               ]}
-              placeholder="Describe this parking spot (optional)"
+              placeholder={t('map.descriptionPlaceholder')}
               placeholderTextColor={textSecondaryColor}
               value={description}
               onChangeText={setDescription}
@@ -197,7 +199,7 @@ export default function AddParkingSpotScreen() {
 
           {/* Pin Type Selection */}
           <Card>
-            <Text style={[styles.label, { color: textColor }]}>Pin Type *</Text>
+            <Text style={[styles.label, { color: textColor }]}>{t('map.pinType')}</Text>
             <View style={styles.pinTypeContainer}>
               <TouchableOpacity
                 style={[
@@ -219,7 +221,7 @@ export default function AddParkingSpotScreen() {
                     { color: selectedPinType === 'walk-in' ? '#fff' : tintColor },
                   ]}
                 >
-                  Walk-In
+                  {t('map.walkIn')}
                 </Text>
               </TouchableOpacity>
 
@@ -247,8 +249,8 @@ export default function AddParkingSpotScreen() {
                       
                       if (activeLeavingSoon.length > 0) {
                         Alert.alert(
-                          'Cannot Create Pin',
-                          'You already have an active Leaving Soon pin. Please wait until it expires before creating another one.'
+                          t('map.cannotCreatePin'),
+                          t('map.alreadyHaveLeavingSoon')
                         );
                         setCheckingLeavingSoon(false);
                         return;
@@ -276,7 +278,7 @@ export default function AddParkingSpotScreen() {
                     { color: selectedPinType === 'leaving-soon' ? '#fff' : errorColor },
                   ]}
                 >
-                  Leaving Soon
+                  {t('map.leavingSoon')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -285,7 +287,7 @@ export default function AddParkingSpotScreen() {
           {/* Leaving Soon Time Selector */}
           {selectedPinType === 'leaving-soon' && (
             <Card>
-              <Text style={[styles.label, { color: textColor }]}>Approximate Leaving Time *</Text>
+              <Text style={[styles.label, { color: textColor }]}>{t('map.approximateLeavingTime')}</Text>
               <View style={styles.timeSelectorContainer}>
                 {[5, 10, 15, 20, 30, 45, 60].map((minutes) => (
                   <TouchableOpacity
@@ -310,14 +312,14 @@ export default function AddParkingSpotScreen() {
                 ))}
               </View>
               <Text style={[styles.hintText, { color: textSecondaryColor }]}>
-                Select when you plan to leave this parking spot
+                {t('map.leavingTimeHint')}
               </Text>
             </Card>
           )}
 
           {/* Paid/Free Selection */}
           <Card>
-            <Text style={[styles.label, { color: textColor }]}>Payment Type *</Text>
+            <Text style={[styles.label, { color: textColor }]}>{t('map.paymentType')}</Text>
             <View style={styles.paymentContainer}>
               <TouchableOpacity
                 style={[
@@ -339,7 +341,7 @@ export default function AddParkingSpotScreen() {
                     { color: !isPaid ? '#fff' : tintColor },
                   ]}
                 >
-                  Free
+                  {t('map.free')}
                 </Text>
               </TouchableOpacity>
 
@@ -363,7 +365,7 @@ export default function AddParkingSpotScreen() {
                     { color: isPaid ? '#fff' : tintColor },
                   ]}
                 >
-                  Paid
+                  {t('map.paid')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -371,7 +373,7 @@ export default function AddParkingSpotScreen() {
 
           {/* Submit Button */}
           <Button
-            title="Create Parking Spot"
+            title={t('map.createParkingSpot')}
             onPress={handleSubmit}
             variant="primary"
             loading={loading}
