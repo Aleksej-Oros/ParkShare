@@ -21,6 +21,16 @@ import { User } from '@/models/firestore';
 
 const COLLECTION = 'users';
 
+/** Fields clients may set via profile/onboarding updates (Firestore rules enforce the same). */
+const PROFILE_SAFE_UPDATE_FIELDS = [
+  'displayName',
+  'vehicleBrand',
+  'vehicleModel',
+  'vehicleColor',
+  'isOnboarded',
+  'isActive',
+] as const;
+
 /**
  * Check if a user is onboarded (has user doc in Firestore)
  * @param userId - Firebase Auth UID
@@ -208,76 +218,22 @@ export async function upsertUser(
     };
 
     if (userSnap.exists()) {
-      // User exists: update with merge to preserve existing fields
-      // Get existing data to preserve fields that shouldn't be overwritten
-      const existingData = userSnap.data() as Omit<User, 'id'>;
-      
-      // Build update object: only update onboarding fields, preserve existing data
-      // CRITICAL: Ensure all fields are correct types (strings for text, booleans for flags)
-      const updateData: any = {
+      // Existing user: profile/onboarding fields only (economy/premium locked in Firestore rules).
+      const updateData: Record<string, unknown> = {
         displayName: String(fullUserData.displayName || '').trim(),
         vehicleBrand: String(fullUserData.vehicleBrand || '').trim(),
         vehicleModel: String(fullUserData.vehicleModel || '').trim(),
         vehicleColor: String(fullUserData.vehicleColor || '').trim(),
-        isOnboarded: typeof fullUserData.isOnboarded === 'boolean' ? fullUserData.isOnboarded : (fullUserData.isOnboarded === 'true' || fullUserData.isOnboarded === true || fullUserData.isOnboarded === 1),
         updatedAt: serverTimestamp(),
       };
 
-      // Preserve existing fields - only update if explicitly provided in userData
-      // This ensures we don't overwrite existing parkPoints, reliabilityScore, badges, etc.
-      if (userData.parkPoints !== undefined) {
-        updateData.parkPoints = userData.parkPoints;
-      } else {
-        // Preserve existing value
-        updateData.parkPoints = existingData.parkPoints ?? 0;
-      }
-
-      if (userData.reliabilityScore !== undefined) {
-        updateData.reliabilityScore = userData.reliabilityScore;
-      } else {
-        // Preserve existing value
-        updateData.reliabilityScore = existingData.reliabilityScore ?? 50;
-      }
-
-      if (userData.badges === undefined) {
-        updateData.badges = existingData.badges ?? [];
-      } else {
-        updateData.badges = userData.badges;
-      }
-
-      // CRITICAL: Ensure ALL boolean fields are stored as booleans, not strings
-      // This includes both new values and preserved existing values
-      if (userData.isTester === undefined) {
-        // Preserve existing value, but ensure it's a boolean (may be string from old data)
-        const existingIsTester = existingData.isTester ?? false;
-        updateData.isTester = typeof existingIsTester === 'boolean' ? existingIsTester : (existingIsTester === 'true' || existingIsTester === true || existingIsTester === 1);
-      } else {
-        // User provided value - ensure it's a boolean
-        updateData.isTester = typeof userData.isTester === 'boolean' ? userData.isTester : (userData.isTester === 'true' || userData.isTester === true || userData.isTester === 1);
-      }
-
-      if (userData.isPremium === undefined) {
-        // Preserve existing value, but ensure it's a boolean (may be string from old data)
-        const existingIsPremium = existingData.isPremium ?? false;
-        updateData.isPremium = typeof existingIsPremium === 'boolean' ? existingIsPremium : (existingIsPremium === 'true' || existingIsPremium === true || existingIsPremium === 1);
-      } else {
-        // User provided value - ensure it's a boolean
-        updateData.isPremium = typeof userData.isPremium === 'boolean' ? userData.isPremium : (userData.isPremium === 'true' || userData.isPremium === true || userData.isPremium === 1);
-      }
-
-      if (userData.isActive === undefined) {
-        // Preserve existing value, but ensure it's a boolean (may be string from old data)
-        const existingIsActive = existingData.isActive ?? true;
-        updateData.isActive = typeof existingIsActive === 'boolean' ? existingIsActive : (existingIsActive !== 'false' && existingIsActive !== false && existingIsActive !== 0);
-      } else {
-        // User provided value - ensure it's a boolean
-        updateData.isActive = typeof userData.isActive === 'boolean' ? userData.isActive : (userData.isActive !== 'false' && userData.isActive !== false && userData.isActive !== 0);
-      }
-
-      if (userData.rating === undefined) {
-        updateData.rating = existingData.rating ?? 5.0;
-      } else {
-        updateData.rating = userData.rating;
+      if (userData.isOnboarded !== undefined) {
+        updateData.isOnboarded =
+          typeof fullUserData.isOnboarded === 'boolean'
+            ? fullUserData.isOnboarded
+            : fullUserData.isOnboarded === 'true' ||
+              fullUserData.isOnboarded === true ||
+              fullUserData.isOnboarded === 1;
       }
 
       await updateDoc(userRef, updateData);
@@ -353,65 +309,58 @@ export async function updateUser(
       throw new Error('User not found');
     }
 
-    // Build update object with type-safe conversions
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
     };
 
-    // CRITICAL: Ensure all string fields are actually strings (not booleans)
-    if (updates.displayName !== undefined) {
-      updateData.displayName = String(updates.displayName || '').trim();
+    for (const field of PROFILE_SAFE_UPDATE_FIELDS) {
+      if (updates[field] === undefined) {
+        continue;
+      }
+      if (field === 'displayName') {
+        updateData.displayName = String(updates.displayName || '').trim();
+      } else if (field === 'vehicleBrand') {
+        updateData.vehicleBrand = String(updates.vehicleBrand || '').trim();
+      } else if (field === 'vehicleModel') {
+        updateData.vehicleModel = String(updates.vehicleModel || '').trim();
+      } else if (field === 'vehicleColor') {
+        updateData.vehicleColor = String(updates.vehicleColor || '').trim();
+      } else if (field === 'isOnboarded') {
+        updateData.isOnboarded =
+          typeof updates.isOnboarded === 'boolean'
+            ? updates.isOnboarded
+            : updates.isOnboarded === 'true' ||
+              updates.isOnboarded === true ||
+              updates.isOnboarded === 1;
+      } else if (field === 'isActive') {
+        updateData.isActive =
+          typeof updates.isActive === 'boolean'
+            ? updates.isActive
+            : updates.isActive !== 'false' && updates.isActive !== false && updates.isActive !== 0;
+      }
     }
-    if (updates.vehicleBrand !== undefined) {
-      updateData.vehicleBrand = String(updates.vehicleBrand || '').trim();
+
+    const attemptedEconomyFields = [
+      'rating',
+      'reliabilityScore',
+      'parkPoints',
+      'badges',
+      'isTester',
+      'isPremium',
+      'rewardEligibleNextMonth',
+      'leavingSoonSharesThisMonth',
+      'sharingRewardDiscount',
+    ] as const;
+    const blocked = attemptedEconomyFields.filter((key) => updates[key] !== undefined);
+    if (blocked.length > 0) {
+      console.warn(
+        '[userService] Ignored protected user fields on updateUser:',
+        blocked.join(', ')
+      );
     }
-    if (updates.vehicleModel !== undefined) {
-      updateData.vehicleModel = String(updates.vehicleModel || '').trim();
-    }
-    if (updates.vehicleColor !== undefined) {
-      updateData.vehicleColor = String(updates.vehicleColor || '').trim();
-    }
-    if (updates.rating !== undefined) {
-      updateData.rating = Number(updates.rating);
-    }
-    if (updates.reliabilityScore !== undefined) {
-      updateData.reliabilityScore = Number(updates.reliabilityScore);
-    }
-    if (updates.parkPoints !== undefined) {
-      updateData.parkPoints = Number(updates.parkPoints);
-    }
-    if (updates.badges !== undefined) {
-      updateData.badges = Array.isArray(updates.badges) ? updates.badges : [];
-    }
-    if (updates.isTester !== undefined) {
-      // CRITICAL: Ensure boolean is stored as boolean, not string
-      updateData.isTester = typeof updates.isTester === 'boolean' ? updates.isTester : (updates.isTester === 'true' || updates.isTester === true || updates.isTester === 1);
-    }
-    if (updates.isPremium !== undefined) {
-      // CRITICAL: Ensure boolean is stored as boolean, not string
-      updateData.isPremium = typeof updates.isPremium === 'boolean' ? updates.isPremium : (updates.isPremium === 'true' || updates.isPremium === true || updates.isPremium === 1);
-    }
-    if (updates.isActive !== undefined) {
-      // CRITICAL: Ensure boolean is stored as boolean, not string
-      updateData.isActive = typeof updates.isActive === 'boolean' ? updates.isActive : (updates.isActive !== 'false' && updates.isActive !== false && updates.isActive !== 0);
-    }
-    if (updates.isOnboarded !== undefined) {
-      // CRITICAL: Ensure boolean is stored as boolean, not string
-      updateData.isOnboarded = typeof updates.isOnboarded === 'boolean' ? updates.isOnboarded : (updates.isOnboarded === 'true' || updates.isOnboarded === true || updates.isOnboarded === 1);
-    }
-    if (updates.rewardEligibleNextMonth !== undefined) {
-      updateData.rewardEligibleNextMonth =
-        typeof updates.rewardEligibleNextMonth === 'boolean'
-          ? updates.rewardEligibleNextMonth
-          : (updates.rewardEligibleNextMonth === 'true' ||
-              updates.rewardEligibleNextMonth === true ||
-              updates.rewardEligibleNextMonth === 1);
-    }
-    if (updates.leavingSoonSharesThisMonth !== undefined) {
-      updateData.leavingSoonSharesThisMonth = Number(updates.leavingSoonSharesThisMonth || 0);
-    }
-    if (updates.sharingRewardDiscount !== undefined) {
-      updateData.sharingRewardDiscount = updates.sharingRewardDiscount;
+
+    if (Object.keys(updateData).length <= 1) {
+      throw new Error('No profile fields to update');
     }
 
     await updateDoc(userRef, updateData);

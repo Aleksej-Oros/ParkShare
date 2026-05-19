@@ -5,6 +5,175 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function boolIsTrue(value) {
+      return value == true || value == 1 || value == 'true';
+    }
+
+    function boolEqual(a, b) {
+      return boolIsTrue(a) == boolIsTrue(b);
+    }
+
+    function numValue(data, field, defaultValue) {
+      return data.get(field, defaultValue) is number
+        ? data.get(field, defaultValue)
+        : defaultValue;
+    }
+
+    // --- Users ---
+
+    function userCreateValid(userId) {
+      let data = request.resource.data;
+      return isOwner(userId)
+        && !boolIsTrue(data.get('isPremium', false))
+        && !boolIsTrue(data.get('isTester', false))
+        && numValue(data, 'parkPoints', 0) == 0
+        && numValue(data, 'reliabilityScore', 50) >= 0
+        && numValue(data, 'reliabilityScore', 50) <= 100
+        && (!('badges' in data) || data.badges.size() == 0)
+        && !('sharingRewardDiscount' in data)
+        && !('rewardEligibleNextMonth' in data)
+        && !('leavingSoonSharesThisMonth' in data)
+        && !('pinsCreated' in data)
+        && !('pinsVerified' in data)
+        && !('pinsExpired' in data);
+    }
+
+    function userPremiumLocked() {
+      return boolEqual(
+        request.resource.data.get('isPremium', false),
+        resource.data.get('isPremium', false)
+      );
+    }
+
+    function userBadgesLocked() {
+      return request.resource.data.get('badges', []) == resource.data.get('badges', []);
+    }
+
+    function userRatingLocked() {
+      return numValue(request.resource.data, 'rating', 5.0)
+        == numValue(resource.data, 'rating', 5.0);
+    }
+
+    function userReliabilityLocked() {
+      return numValue(request.resource.data, 'reliabilityScore', 50)
+        == numValue(resource.data, 'reliabilityScore', 50);
+    }
+
+    function userProfileFieldsUpdate() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      return changed.hasOnly([
+          'displayName',
+          'vehicleBrand',
+          'vehicleModel',
+          'vehicleColor',
+          'isOnboarded',
+          'isActive',
+          'updatedAt'
+        ])
+        && numValue(request.resource.data, 'parkPoints', 0)
+          == numValue(resource.data, 'parkPoints', 0)
+        && numValue(request.resource.data, 'leavingSoonSharesThisMonth', 0)
+          == numValue(resource.data, 'leavingSoonSharesThisMonth', 0)
+        && boolEqual(
+          request.resource.data.get('rewardEligibleNextMonth', false),
+          resource.data.get('rewardEligibleNextMonth', false)
+        )
+        && request.resource.data.get('sharingRewardDiscount', null)
+          == resource.data.get('sharingRewardDiscount', null);
+    }
+
+    function userPointsIncrementUpdate() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let prev = numValue(resource.data, 'parkPoints', 0);
+      let next = numValue(request.resource.data, 'parkPoints', 0);
+      return changed.hasOnly(['parkPoints', 'updatedAt'])
+        && next > prev
+        && next <= prev + 30
+        && numValue(request.resource.data, 'leavingSoonSharesThisMonth', 0)
+          == numValue(resource.data, 'leavingSoonSharesThisMonth', 0)
+        && request.resource.data.get('sharingRewardDiscount', null)
+          == resource.data.get('sharingRewardDiscount', null);
+    }
+
+    function userTrustMetricsUpdate() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let prevCreated = numValue(resource.data, 'pinsCreated', 0);
+      let prevVerified = numValue(resource.data, 'pinsVerified', 0);
+      let prevExpired = numValue(resource.data, 'pinsExpired', 0);
+      let nextCreated = numValue(request.resource.data, 'pinsCreated', 0);
+      let nextVerified = numValue(request.resource.data, 'pinsVerified', 0);
+      let nextExpired = numValue(request.resource.data, 'pinsExpired', 0);
+      return (
+          changed.hasOnly(['pinsCreated', 'lastActivityAt', 'updatedAt'])
+          && nextCreated == prevCreated + 1
+        )
+        || (
+          changed.hasOnly(['pinsExpired', 'updatedAt'])
+          && nextExpired == prevExpired + 1
+        )
+        || (
+          changed.hasOnly(['pinsVerified', 'updatedAt'])
+          && nextVerified == prevVerified + 1
+        );
+    }
+
+    function userRewardsFieldsUpdate() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      let allowed = [
+        'leavingSoonSharesThisMonth',
+        'sharingRewardDiscount',
+        'rewardEligibleNextMonth',
+        'updatedAt'
+      ];
+      let prevShares = numValue(resource.data, 'leavingSoonSharesThisMonth', 0);
+      let nextShares = numValue(request.resource.data, 'leavingSoonSharesThisMonth', 0);
+      let discountOk = !changed.hasAny(['sharingRewardDiscount'])
+        || (
+          request.resource.data.sharingRewardDiscount.percent == 30
+          && request.resource.data.sharingRewardDiscount.code == 'SHARE30'
+          && request.resource.data.sharingRewardDiscount.expiresAt is number
+        );
+      let eligibleOk = !changed.hasAny(['rewardEligibleNextMonth'])
+        || (
+          !boolIsTrue(resource.data.get('rewardEligibleNextMonth', false))
+          && boolIsTrue(request.resource.data.get('rewardEligibleNextMonth', false))
+        );
+      return changed.hasOnly(allowed)
+        && numValue(request.resource.data, 'parkPoints', 0)
+          == numValue(resource.data, 'parkPoints', 0)
+        && nextShares >= prevShares
+        && nextShares <= 31
+        && discountOk
+        && eligibleOk;
+    }
+
+    function userUpdateValid(userId) {
+      return isOwner(userId)
+        && userPremiumLocked()
+        && userBadgesLocked()
+        && userRatingLocked()
+        && userReliabilityLocked()
+        && (
+          userProfileFieldsUpdate()
+          || userPointsIncrementUpdate()
+          || userTrustMetricsUpdate()
+          || userRewardsFieldsUpdate()
+        );
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if userCreateValid(userId);
+      allow update: if userUpdateValid(userId);
+      allow delete: if false;
+    }
+
+    // --- Parking spots ---
+
     function reservationUpdateKeys() {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         'reservation',
@@ -23,37 +192,70 @@ service cloud.firestore {
         : resource.data.expiresAt.toMillis();
     }
 
+    function newSpotExpiresAtMillis() {
+      return request.resource.data.expiresAt is number
+        ? request.resource.data.expiresAt
+        : request.resource.data.expiresAt.toMillis();
+    }
+
     function reservationExpiresAtMillis() {
       return resource.data.reservation.expiresAt is number
         ? resource.data.reservation.expiresAt
         : resource.data.reservation.expiresAt.toMillis();
     }
 
-    match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
+    function parkingSpotCreateValid() {
+      let data = request.resource.data;
+      return isSignedIn()
+        && data.userId == request.auth.uid
+        && data.priorityScore == 0
+        && !('reservation' in data)
+        && data.pinType in ['walk-in', 'leaving-soon']
+        && data.status in [
+          'walk_in_pending',
+          'leaving_soon_active',
+          'potentially-free',
+          'verified'
+        ]
+        && newSpotExpiresAtMillis() > request.time.toMillis()
+        && data.location.latitude is number
+        && data.location.longitude is number
+        && data.location.latitude >= -90
+        && data.location.latitude <= 90
+        && data.location.longitude >= -180
+        && data.location.longitude <= 180;
+    }
+
+    function ownerSpotFieldUpdateValid() {
+      let changed = request.resource.data.diff(resource.data).changedKeys();
+      return request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.priorityScore == resource.data.priorityScore
+        && !changed.hasAny(['reservation', 'userId', 'priorityScore'])
+        && changed.hasOnly([
+          'title',
+          'description',
+          'pinType',
+          'status',
+          'willLeaveIn',
+          'expiresAt',
+          'isPaid',
+          'updatedAt'
+        ]);
     }
 
     match /parkingSpots/{spotId} {
-      allow create: if isSignedIn();
+      allow create: if parkingSpotCreateValid();
       allow read: if isSignedIn();
 
       allow update: if isSignedIn() && (
-        // Owner can update their own spot
-        request.auth.uid == resource.data.userId ||
+        ownerSpotFieldUpdateValid() ||
 
-        // Non-owner: allow status/expiry updates only
-        request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'expiresAt']) ||
+        // Non-owner: cooperative status / expiry cleanup
+        request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(['status', 'expiresAt', 'updatedAt']) ||
 
         // Reservation request (pending) by requester
-        (
-          reservationUpdateKeys() &&
-          resource.data.userId != request.auth.uid &&
-          request.resource.data.reservation.requesterId == request.auth.uid &&
-          request.resource.data.reservation.status == 'pending'
-        ) ||
-
-        // Reservation request (pending) by requester (strict checks)
         (
           reservationUpdateKeys() &&
           resource.data.pinType == 'leaving-soon' &&
@@ -111,25 +313,60 @@ service cloud.firestore {
       allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
 
+    // --- Park history ---
+
     match /parkHistory/{historyId} {
-      allow read, create: if isSignedIn();
-      allow update, delete: if false; // Park history is immutable
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.spotId is string
+        && request.resource.data.confirmedAt is number;
+      allow update, delete: if false;
     }
 
+    // --- Subscriptions (read-only for clients until server/IAP sync) ---
+
     match /subscriptions/{subId} {
-      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
-      allow write: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow read: if isSignedIn() && subId == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
+    // --- Monthly sharing stats (increment-only from owner) ---
+
+    function userMonthlyStatsCreateValid() {
+      let data = request.resource.data;
+      return data.userId == request.auth.uid
+        && data.leavingSoonCount == 1
+        && data.completedPinIds is list
+        && data.completedPinIds.size() == 1
+        && data.yearMonth is string;
+    }
+
+    function userMonthlyStatsUpdateValid() {
+      let prevCount = numValue(resource.data, 'leavingSoonCount', 0);
+      let nextCount = numValue(request.resource.data, 'leavingSoonCount', 0);
+      let prevIds = resource.data.get('completedPinIds', []);
+      let nextIds = request.resource.data.get('completedPinIds', []);
+      let rewardOk = request.resource.data.rewardUnlocked == resource.data.rewardUnlocked
+        || (
+          !boolIsTrue(resource.data.get('rewardUnlocked', false))
+          && boolIsTrue(request.resource.data.get('rewardUnlocked', false))
+          && nextCount >= 15
+        );
+      return request.resource.data.userId == request.auth.uid
+        && resource.data.userId == request.auth.uid
+        && nextCount == prevCount + 1
+        && nextCount <= 31
+        && nextIds.size() == prevIds.size() + 1
+        && request.resource.data.yearMonth == resource.data.yearMonth
+        && rewardOk;
     }
 
     match /userMonthlyStats/{statsId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
-      // TODO: Restrict writes to Cloud Functions only.
+      allow create: if isSignedIn() && userMonthlyStatsCreateValid();
+      allow update: if isSignedIn() && userMonthlyStatsUpdateValid();
+      allow delete: if false;
     }
   }
 }
-
-
-
-

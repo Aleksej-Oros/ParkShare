@@ -2,6 +2,10 @@
  * Subscription Service
  * Manages user subscriptions, trials, and premium status
  * Integrates with RevenueCat for payment processing
+ *
+ * Firestore: `subscriptions` is read-only from the client (see firestore.rules).
+ * Writes require Admin SDK / Cloud Functions when IAP is enabled.
+ * Premium UI uses `users.isPremium`, which clients cannot self-set.
  */
 
 import {
