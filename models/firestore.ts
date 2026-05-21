@@ -51,6 +51,7 @@ export type ParkingStatus =
 
 export type ReservationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 
+/** Embedded reservation on parkingSpots — production reservation model (see parkingService). */
 export interface ParkingSpotReservation {
   status: ReservationStatus;
   requesterId: string;
@@ -104,6 +105,7 @@ export interface Subscription {
 
 /**
  * bookings collection
+ * @deprecated Unused. Production reservations use ParkingSpot.reservation on parkingSpots.
  */
 export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'expired';
 

@@ -1,12 +1,13 @@
 /**
- * Points Service
- * Manages Park Points gamification system
- * Handles point awards, multipliers, levels, and badges
+ * Points Service — Park Points, levels, priority score helpers.
+ *
+ * Trust / reliability / badges: use userService (recalculateReliabilityScore,
+ * calculateUnlockedBadges, updateReliabilityScoreIfNeeded). Do not add parallel logic here.
  */
 
 import { doc, getDoc, updateDoc, increment, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { firestore } from '@/firebase';
-import { getUserById, updateUser } from '@/services/userService';
+import { getUserById, calculateUnlockedBadges } from '@/services/userService';
 
 const USERS_COLLECTION = 'users';
 
@@ -192,34 +193,18 @@ export function getLevelProgress(currentPoints: number): {
 }
 
 /**
- * Update reliability score based on pin verification success
- * Increases score for successful verifications, decreases for failures
- * @param userId - Firebase Auth UID
- * @param isSuccess - Whether pin was successfully verified
- * @throws Error if update fails
+ * @deprecated Use userService.updateReliabilityScoreIfNeeded (counter-based formula).
+ * Per-event +/- scoring is not used in production flows.
  */
 export async function updateReliabilityScore(
   userId: string,
-  isSuccess: boolean
+  _isSuccess: boolean
 ): Promise<void> {
-  const user = await getUserById(userId);
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  let newScore = user.reliabilityScore;
-
-  if (isSuccess) {
-    // Increase reliability (cap at 100)
-    newScore = Math.min(user.reliabilityScore + 2, 100);
-  } else {
-    // Decrease reliability (floor at 0)
-    newScore = Math.max(user.reliabilityScore - 1, 0);
-  }
-
-  await updateUser(userId, {
-    reliabilityScore: newScore,
-  });
+  console.warn(
+    '[pointsService] updateReliabilityScore is deprecated; use userService.updateReliabilityScoreIfNeeded'
+  );
+  const { updateReliabilityScoreIfNeeded } = await import('@/services/userService');
+  await updateReliabilityScoreIfNeeded(userId);
 }
 
 /**
@@ -251,10 +236,8 @@ export function calculatePriorityScore(
 }
 
 /**
- * Check if user qualifies for badge
- * @param userId - Firebase Auth UID
- * @param badgeName - Badge identifier
- * @returns boolean indicating if user should receive badge
+ * @deprecated Use userService.calculateUnlockedBadges / updateBadgesIfNeeded.
+ * Badge IDs: trusted-source, active-driver, early-adopter (see userService).
  */
 export async function checkBadgeEligibility(
   userId: string,
@@ -264,24 +247,9 @@ export async function checkBadgeEligibility(
   if (!user) {
     return false;
   }
-
-  // Badge eligibility logic
-  switch (badgeName) {
-    case 'trusted-source':
-      // User has reliability score > 80
-      return user.reliabilityScore >= 80;
-
-    case 'top-sharer':
-      // User has created 50+ verified pins (would need to query parkingSpots)
-      // For now, check points as proxy
-      return user.parkPoints >= 500;
-
-    case 'park-master':
-      // User is level 10+
-      return calculateLevel(user.parkPoints) >= 10;
-
-    default:
-      return false;
+  if ((user.badges || []).includes(badgeName)) {
+    return true;
   }
+  return calculateUnlockedBadges(user).includes(badgeName);
 }
 

@@ -1,13 +1,8 @@
 /**
- * usePremiumAccess Hook
- * Centralized hook for checking premium user status
- * Uses real-time profile data (no re-fetching on every check)
- * 
- * This hook is designed to be easily extendable for future premium features:
- * - Navigation (current)
- * - Filters
- * - Early access pins
- * - No ads
+ * usePremiumAccess — UI premium gating (map, reservations, routes, profile badge).
+ *
+ * Source of truth: `users.isPremium` on the realtime profile (see services/premiumAccess.ts).
+ * Do not gate features on `subscriptions` or subscriptionService.isUserPremium.
  */
 import { useAuth } from './useAuth';
 import { useProfile } from './useProfile.realtime';

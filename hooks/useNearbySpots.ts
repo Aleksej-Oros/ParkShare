@@ -3,6 +3,7 @@ import { listenToNearbySpots } from '@/services/parkingService';
 import { ParkingSpot } from '@/models/firestore';
 
 /**
+ * @deprecated UNUSED — map uses useMapPins + parkingService.listenToNearbySpots instead.
  * useNearbySpots subscribes to parkingSpots within a radius of a center point (lat,lng).
  * Returns { spots, loading, error }
  */

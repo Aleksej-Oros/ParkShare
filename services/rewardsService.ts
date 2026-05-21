@@ -1,6 +1,6 @@
 /**
- * Rewards Service
- * Tracks monthly leaving-soon completions and reward eligibility.
+ * Rewards Service — monthly leaving-soon sharing rewards (userMonthlyStats + user fields).
+ * Independent of reservations; reservation flow is parkingService + parkingSpots.reservation.
  */
 
 import {

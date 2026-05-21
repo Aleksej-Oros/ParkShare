@@ -1,7 +1,11 @@
 /**
- * Booking Service
- * Manages parking spot reservations and bookings
- * Handles booking creation, confirmation, cancellation, and status tracking
+ * @deprecated UNUSED — do not import for new code.
+ *
+ * Production reservations use `parkingSpots.reservation` via parkingService.ts
+ * (requestReservation, approveReservation, rejectReservation, cancelReservation).
+ *
+ * This file remains for reference only. The `bookings` collection has no Firestore rules
+ * and is not wired to any UI. Safe to remove after confirming no external consumers.
  */
 
 import {

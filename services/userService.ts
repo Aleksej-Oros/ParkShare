@@ -1,7 +1,12 @@
 /**
- * User Service
- * Handles CRUD operations for user profiles in Firestore
- * Manages user data, ratings, vehicle info, and gamification stats
+ * User Service — profile CRUD and trust/reliability system.
+ *
+ * TRUST SOURCE OF TRUTH:
+ * - recalculateReliabilityScore() — pure score from pinsCreated / pinsVerified / inactivity
+ * - calculateUnlockedBadges() — trusted-source, active-driver, early-adopter
+ * - updateReliabilityScoreIfNeeded / updateBadgesIfNeeded — Firestore writers (call after pin events)
+ *
+ * Do not duplicate trust logic in pointsService.
  */
 
 import {

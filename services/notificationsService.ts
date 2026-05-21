@@ -7,7 +7,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { isUserPremium } from '@/services/subscriptionService';
+import { isPremiumActive } from '@/services/premiumAccess';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -128,7 +128,7 @@ export async function notifyNewNearbyPin(
     return;
   }
 
-  const isPremium = await isUserPremium(userId);
+  const isPremium = await isPremiumActive(userId);
   const delaySeconds = isPremium ? 0 : Math.floor(Math.random() * 30) + 60; // 60-90s for free
 
   const title = pinType === 'leaving-soon' ? '🚗 Leaving Soon Pin Nearby!' : '📍 New Parking Spot Nearby!';

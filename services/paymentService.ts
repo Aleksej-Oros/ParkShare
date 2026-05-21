@@ -1,16 +1,10 @@
 /**
- * Payment Service
- * Handles RevenueCat integration for subscription payments
- * Manages purchase flows, receipt validation, and subscription status sync
- * 
+ * Payment Service — RevenueCat stub (PAYMENTS_ENABLED = false).
+ *
+ * When IAP is enabled, purchases must sync `users.isPremium` via server/Admin SDK
+ * (see premiumAccess.ts). subscriptionService stores billing metadata only.
+ *
  * ⚠️ PAYMENT FEATURES DISABLED FOR EXPO GO TESTING ⚠️
- * 
- * This service is structured for future RevenueCat integration but is currently
- * disabled to allow testing in Expo Go. When ready for production:
- * 1. Install: npm install react-native-purchases
- * 2. Configure RevenueCat API keys in environment variables
- * 3. Uncomment and update the implementation below
- * 4. Use EAS Build for production (payments require native code)
  */
 
 import { Platform } from 'react-native';

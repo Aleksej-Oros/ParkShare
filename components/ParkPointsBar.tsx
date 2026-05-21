@@ -1,3 +1,6 @@
+/**
+ * @deprecated UNUSED — not imported by any screen. Park Points UI not wired yet.
+ */
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useThemeColor } from './Themed';

@@ -1,3 +1,9 @@
+/**
+ * @deprecated UNUSED — use parkingService.ts instead.
+ *
+ * Legacy minimal CRUD from early MVP. Not imported by any screen; exported only via
+ * services/index.ts (removed). Kept temporarily to avoid breaking deep imports.
+ */
 import { collection, addDoc, getDocs, updateDoc, doc, query, where, DocumentData, Timestamp } from 'firebase/firestore';
 import { firestore } from '@/firebase';
 import { ParkingSpot, ParkingStatus } from '@/models/firestore';

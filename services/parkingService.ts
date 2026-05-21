@@ -1,7 +1,10 @@
 /**
- * Parking Service
- * Comprehensive parking spot management with location queries,
- * status updates, verification logic, and expiration handling
+ * Parking Service — production parking + reservation API.
+ *
+ * RESERVATION SOURCE OF TRUTH: embedded `parkingSpots.reservation` on each spot document
+ * (pending → approved | rejected | expired). Used by PinModal, reservations tab, and rules.
+ *
+ * The legacy `bookings` collection + bookingService.ts are deprecated and not used in the app.
  */
 
 import {

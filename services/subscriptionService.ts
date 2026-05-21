@@ -1,12 +1,10 @@
 /**
- * Subscription Service
- * Manages user subscriptions, trials, and premium status
- * Integrates with RevenueCat for payment processing
+ * Subscription Service — billing metadata (NOT runtime premium gating).
  *
- * Firestore: `subscriptions` is read-only from the client (see firestore.rules).
- * Writes require Admin SDK / Cloud Functions when IAP is enabled.
- * Premium UI uses `users.isPremium`, which clients cannot self-set.
+ * Runtime premium: `users.isPremium` via services/premiumAccess.ts + usePremiumAccess.
+ * This collection stores plan/trial/history for future IAP; client writes are disabled in rules.
  */
+import { isPremiumActive } from '@/services/premiumAccess';
 
 import {
   doc,
@@ -195,29 +193,11 @@ export async function cancelSubscription(userId: string): Promise<void> {
 }
 
 /**
- * Check if user has active premium subscription
- * Considers trial period and active status
- * @param userId - Firebase Auth UID
- * @returns boolean indicating premium status
+ * @deprecated Use isPremiumActive() from premiumAccess.ts (reads users.isPremium).
+ * Kept for backward compatibility with existing call sites.
  */
 export async function isUserPremium(userId: string): Promise<boolean> {
-  const subscription = await getSubscription(userId);
-
-  if (!subscription) {
-    return false;
-  }
-
-  if (!subscription.isActive) {
-    return false;
-  }
-
-  // Check if user is in trial period
-  if (subscription.trialEndsAt && subscription.trialEndsAt > Date.now()) {
-    return true; // User is in trial, consider as premium
-  }
-
-  // Check if user has paid plan
-  return subscription.plan === 'monthly' || subscription.plan === 'yearly';
+  return isPremiumActive(userId);
 }
 
 /**
